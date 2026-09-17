@@ -309,7 +309,7 @@
       <div class="filter-group">
         <label for="api-key-input">Gemini APIキー</label>
         <div style="display: flex; gap: 8px;">
-          <input type="password" id="api-key-input" class="filter-input" placeholder="AI Studioで取得したAPIキーを入力" style="flex: 1;">
+          <input type="password" id="api-key-input" class="filter-input" placeholder="取得したAPIキーを入力" style="flex: 1;">
           <button class="nav-btn secondary" onclick="saveApiKey()" style="padding: 12px; width: auto; font-size: 0.9rem;">保存</button>
         </div>
         <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
@@ -418,7 +418,7 @@
     initApp();
     applyTheme(); 
     updateMemoryUI(); 
-    loadApiKey(); // 追加：起動時に保存されたAPIキーを読み込む
+    loadApiKey(); // 起動時に保存されたAPIキーを読み込む
     switchScreen('screen-start');
   }
 
@@ -844,9 +844,8 @@
   }
 
   async function generateAIQuestion(genre, subgenre) {
-    // 修正：保存されたAPIキーを使用する
     const apiKey = localStorage.getItem('my_gemini_api_key'); 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`; // 安定板のGemini 1.5 Flashに変更
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`; 
     
     let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
     if (genre && genre !== "all") {
