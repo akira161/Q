@@ -192,10 +192,18 @@
   </div>
 
   <div id="screen-loading" class="screen active">
-    <div>
+    <div id="loading-content">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+      <br>システムとデータを同期しています...<br><span style="font-size:0.85rem; font-weight:normal; margin-top:8px; display:inline-block;">しばらくお待ちください。</span>
     </div>
-    システムとデータを同期しています...<br><span style="font-size:0.85rem; font-weight:normal; margin-top:8px; display:inline-block;">しばらくお待ちください。</span>
+    <div id="upload-content" style="display: none; text-align: left;">
+      <p style="color:var(--danger-text); font-weight: bold; margin-bottom: 12px; text-align: center;">自動読み込みに失敗しました</p>
+      <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; line-height: 1.5;">
+        ローカル環境ではブラウザのセキュリティ制限によりExcelファイルを自動読み込みできません。<br><br>
+        お手数ですが、以下のボタンから直接 <b>Sanitary_Engineering_Exam_DB_v15.xlsx</b> を選択してください。
+      </div>
+      <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
+    </div>
   </div>
 
   <div id="screen-start" class="screen">
@@ -322,18 +330,8 @@
   import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
   import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  // Excelファイルの読み込みを廃止し、モックデータを使用します。
-  // const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
-  // const SHEET_NAME = "過去問マスターDB";
-
-  // モックデータの定義
-  const MOCK_DATA = [
-    { "問題ID": "Q1", "年度": "2023", "大分類(ブロック)": "水質管理", "サブジャンル": "浄水処理", "問題文": "浄水処理における凝集剤として最も一般的に用いられるものはどれか。", "選択肢①": "硫酸アルミニウム", "選択肢②": "次亜塩素酸ナトリウム", "選択肢③": "活性炭", "選択肢④": "オゾン", "選択肢⑤": "水酸化カルシウム", "公式正答": "1", "問題のテーマ・内容概要": "凝集剤の種類と用途" },
-    { "問題ID": "Q2", "年度": "2023", "大分類(ブロック)": "空気環境", "サブジャンル": "換気", "問題文": "必要換気量を求めるビルドアップ法の計算式において、直接関係しないものはどれか。", "選択肢①": "室内の二酸化炭素発生量", "選択肢②": "外気の二酸化炭素濃度", "選択肢③": "室内の許容二酸化炭素濃度", "選択肢④": "室内の相対湿度", "選択肢⑤": "換気効率", "公式正答": "4", "問題のテーマ・内容概要": "必要換気量の計算（ビルドアップ法）" },
-    { "問題ID": "Q3", "年度": "2022", "大分類(ブロック)": "廃棄物処理", "サブジャンル": "焼却", "問題文": "都市ごみのストーカ式焼却炉に関する記述として、不適切なものはどれか。", "選択肢①": "連続的な燃焼が可能である。", "選択肢②": "ごみの撹拌・移送が行われる。", "選択肢③": "流動床式に比べて、炉内の温度制御が容易である。", "選択肢④": "燃焼ガスの滞留時間を確保する必要がある。", "選択肢⑤": "廃熱回収設備を併設することが一般的である。", "公式正答": "3", "問題のテーマ・内容概要": "ごみ焼却炉（ストーカ式）の特徴" },
-    { "問題ID": "Q4", "年度": "2022", "大分類(ブロック)": "水質管理", "サブジャンル": "下水処理", "問題文": "活性汚泥法におけるバルキング（膨化）の原因として、考えにくいものはどれか。", "選択肢①": "糸状性細菌の異常増殖", "選択肢②": "溶存酸素（DO）の不足", "選択肢③": "BOD負荷の過大", "選択肢④": "水温の著しい低下", "選択肢⑤": "栄養塩（窒素、リン）の過剰", "公式正答": "5", "問題のテーマ・内容概要": "活性汚泥法における異常現象（バルキング）" },
-    { "問題ID": "Q5", "年度": "2021", "大分類(ブロック)": "騒音・振動", "サブジャンル": "騒音評価", "問題文": "環境騒音の評価指標として広く用いられている等価騒音レベルの記号はどれか。", "選択肢①": "LAeq", "選択肢②": "LAmax", "選択肢③": "LAE", "選択肢④": "L5", "選択肢⑤": "L95", "公式正答": "1", "問題のテーマ・内容概要": "騒音評価指標" }
-  ];
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
+  const SHEET_NAME = "過去問マスターDB";
 
   // 全データとその抽出用マスター
   let allQuestions = [];
@@ -359,29 +357,26 @@
   const appId = typeof __app_id !== 'undefined' ? __app_id : 'sanitary-eng-exam-app';
   const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
 
-  // --- アプリケーション起動フロー ---
   window.onload = async () => {
     try {
-      // Excel読み込みとFirebase初期化を並列で実行し高速化
-      await Promise.all([
-        loadMockData(), // loadExcelData() から loadMockData() に変更
-        initFirebase()
-      ]);
-      
-      initApp();
-      applyTheme(); // 保存されたテーマを適用
-      updateMemoryUI(); // 成績を画面に反映
-      switchScreen('screen-start');
+      // Firebase初期化とExcel自動読み込みを試みる
+      await initFirebase();
+      await loadExcelData();
+      finishInit();
     } catch (error) {
-      document.getElementById('screen-loading').innerHTML = `
-        <span style="color:var(--danger-text); font-size: 1.1rem;">データの読み込みに失敗しました。</span><br><br>
-        <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; text-align: left; border: 1px solid var(--border);">
-        <b>【原因】</b><br>${error.message}
-        </div>
-      `;
-      console.error(error);
+      // 自動読み込み失敗時（ローカル実行時など）にファイル選択UIを表示
+      console.warn("自動読み込み失敗 (ローカル実行の可能性):", error);
+      document.getElementById('loading-content').style.display = 'none';
+      document.getElementById('upload-content').style.display = 'block';
     }
   };
+
+  function finishInit() {
+    initApp();
+    applyTheme(); 
+    updateMemoryUI(); 
+    switchScreen('screen-start');
+  }
 
   async function initFirebase() {
     try {
@@ -465,12 +460,39 @@
     document.getElementById('ms-rate').textContent = `${rate}%`;
   }
 
-  // async function loadExcelData() { ... } を削除し、loadMockData() を追加
-  async function loadMockData() {
-    // 擬似的なネットワーク遅延を追加（ローディング画面を見せるため）
-    await new Promise(resolve => setTimeout(resolve, 800));
+  async function loadExcelData() {
+    const response = await fetch(EXCEL_FILE_NAME);
+    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    processExcelArrayBuffer(arrayBuffer);
+  }
 
-    allQuestions = MOCK_DATA.map((row, index) => {
+  // ファイル手動選択時のハンドラー
+  window.handleManualUpload = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        processExcelArrayBuffer(e.target.result);
+        finishInit();
+      } catch (error) {
+        alert("エクセルの解析に失敗しました: " + error.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  function processExcelArrayBuffer(arrayBuffer) {
+    const workbook = XLSX.read(arrayBuffer, {type: "array"});
+    const worksheet = workbook.Sheets[SHEET_NAME];
+    
+    if (!worksheet) throw new Error(`シート「${SHEET_NAME}」が見つかりません。`);
+    
+    const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+
+    allQuestions = data.map((row, index) => {
       const year = String(row['年度'] || '').trim();
       const block = String(row['大分類(ブロック)'] || '').trim();
       const sub = String(row['サブジャンル'] || '').trim();
