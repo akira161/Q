@@ -192,6 +192,19 @@
       background: linear-gradient(135deg, #7c3aed, #c026d3);
     }
     #ai-loading { display: none; text-align: center; padding: 40px 20px; }
+
+    /* 設定エリア */
+    .settings-area {
+      margin-top: 32px;
+      padding-top: 24px;
+      border-top: 2px dashed var(--border);
+    }
+    .settings-area h3 {
+      font-size: 1rem;
+      color: var(--text-muted);
+      margin-top: 0;
+      margin-bottom: 12px;
+    }
   </style>
 </head>
 <body>
@@ -289,6 +302,21 @@
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 無限特訓モード</button>
+
+    <!-- 追加：APIキー設定エリア -->
+    <div class="settings-area">
+      <h3>⚙️ AIモード用設定</h3>
+      <div class="filter-group">
+        <label for="api-key-input">Gemini APIキー</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="api-key-input" class="filter-input" placeholder="AI Studioで取得したAPIキーを入力" style="flex: 1;">
+          <button class="nav-btn secondary" onclick="saveApiKey()" style="padding: 12px; width: auto; font-size: 0.9rem;">保存</button>
+        </div>
+        <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
+          ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="screen-quiz" class="screen">
@@ -356,14 +384,13 @@
   let masterGenres = [];
   let genreToSubgenres = {}; 
   
-  // 頻出傾向分析用スコア
   let subgenreTrendScores = {};
 
   let currentTargetQuestions = [];
   let filteredQuestions = [];
   let curIdx = 0;
   let sessionAnswers = {}; 
-  let isAiMode = false; // AIモードフラグを追加
+  let isAiMode = false; 
 
   let userMemory = {
     theme: 'light',
@@ -381,7 +408,7 @@
       await loadExcelData();
       finishInit();
     } catch (error) {
-      console.warn("自動読み込み失敗 (ローカル実行の可能性):", error);
+      console.warn("自動読み込み失敗:", error);
       document.getElementById('loading-content').style.display = 'none';
       document.getElementById('upload-content').style.display = 'block';
     }
@@ -391,8 +418,34 @@
     initApp();
     applyTheme(); 
     updateMemoryUI(); 
+    loadApiKey(); // 追加：起動時に保存されたAPIキーを読み込む
     switchScreen('screen-start');
   }
+
+  // --- APIキー管理 ---
+  window.saveApiKey = function() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (key) {
+      localStorage.setItem('my_gemini_api_key', key);
+      const statusEl = document.getElementById('api-key-status');
+      statusEl.textContent = "✅ ブラウザに安全に保存しました！";
+      statusEl.style.color = "var(--success-text)";
+      setTimeout(() => {
+        statusEl.textContent = "※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。";
+        statusEl.style.color = "var(--text-muted)";
+      }, 3000);
+    } else {
+      alert("APIキーを入力してください。");
+    }
+  };
+
+  function loadApiKey() {
+    const savedKey = localStorage.getItem('my_gemini_api_key');
+    if (savedKey) {
+      document.getElementById('api-key-input').value = savedKey;
+    }
+  }
+  // -------------------
 
   async function initFirebase() {
     try {
@@ -414,7 +467,7 @@
         await loadUserData();
       }
     } catch (e) {
-      console.warn("Firebase Init failed, running locally:", e);
+      console.warn("Firebase Init failed, running locally");
     }
   }
 
@@ -429,9 +482,7 @@
         if (data.stats) userMemory.stats = data.stats;
         if (data.history) userMemory.history = data.history;
       }
-    } catch (e) {
-      console.error("Error loading user data:", e);
-    }
+    } catch (e) {}
   }
 
   async function saveUserData() {
@@ -439,9 +490,7 @@
     const docRef = doc(db, 'artifacts', appId, 'users', userId, 'appData', 'memory');
     try {
       await setDoc(docRef, userMemory, { merge: true });
-    } catch (e) {
-      console.error("Error saving user data:", e);
-    }
+    } catch (e) {}
   }
 
   function applyTheme() {
@@ -502,18 +551,16 @@
 
     allQuestions = data.map((row, index) => {
       let yearStr = String(row['年度'] || '').trim();
-      // 和暦を数値として扱うための処理 (例: 令和5年度 -> 5, 平成30年度 -> -2など相対値化するため抽出)
       let yearNum = 0;
       const rMatch = yearStr.match(/令和([0-9元]+)/);
       if (rMatch) {
           yearNum = rMatch[1] === '元' ? 1 : parseInt(rMatch[1]);
-          yearNum += 2018; // 令和元年は2019年
+          yearNum += 2018; 
       } else {
           const hMatch = yearStr.match(/平成([0-9]+)/);
           if (hMatch) {
-              yearNum = parseInt(hMatch[1]) + 1988; // 平成元年は1989年
+              yearNum = parseInt(hMatch[1]) + 1988; 
           } else {
-              // 西暦などが直接入っている場合
               const numMatch = yearStr.match(/[0-9]{4}/);
               if(numMatch) yearNum = parseInt(numMatch[0]);
           }
@@ -552,8 +599,6 @@
   function initApp() {
     const ySet = new Set();
     const gSet = new Set();
-    
-    // トレンド分析: 最近出題されたジャンルほど重みを高くする
     const subgenreYears = {};
 
     allQuestions.forEach(q => {
@@ -569,21 +614,17 @@
       }
     });
 
-    // スコアリング (新しい年ほど高いポイントを加算)
     let maxYearNum = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
     Object.keys(subgenreYears).forEach(sub => {
         let score = 0;
         subgenreYears[sub].forEach(y => {
-            // 例: 最新年からの差分で重み付け。最新年=10点、1年前=8点、2年前=6点...
             let weight = 10 - (maxYearNum - y) * 2;
             if (weight < 1) weight = 1; 
             score += weight;
         });
-        // 頻度も加味したトータルスコア
         subgenreTrendScores[sub] = score;
     });
 
-    // yearNumの降順でソートしてマスターを作成
     const sortedQuestionsByYear = [...allQuestions].sort((a, b) => b.yearNum - a.yearNum);
     masterYears = Array.from(new Set(sortedQuestionsByYear.map(q => q.year))).filter(y => y);
     masterGenres = Array.from(gSet).sort();
@@ -674,7 +715,6 @@
     
     const countEl = document.getElementById('target-count');
     const startBtn = document.getElementById('start-btn');
-    const startAiBtn = document.getElementById('start-ai-btn');
     
     if (currentTargetQuestions.length === 0) {
       countEl.textContent = '条件に一致する問題がありません';
@@ -691,11 +731,9 @@
     }
   };
 
-  // 重み付きランダム抽出関数
   function getWeightedRandomQuestions(pool, count) {
     if (count >= pool.length) return shuffleArray([...pool]);
 
-    // サブジャンルのトレンドスコアを問題に付与
     let weightedPool = pool.map(q => {
       let score = subgenreTrendScores[q.subgenre] || 1;
       return { q: q, weight: score };
@@ -711,7 +749,7 @@
         currentWeight += weightedPool[j].weight;
         if (randomVal <= currentWeight) {
           selected.push(weightedPool[j].q);
-          weightedPool.splice(j, 1); // 選ばれたものは除外
+          weightedPool.splice(j, 1); 
           break;
         }
       }
@@ -741,14 +779,11 @@
     const selectedCount = selectedCountStr === 'all' ? questionsPool.length : parseInt(selectedCountStr, 10);
     
     if (orderType === 'trend') {
-      // 傾向重視モード
       filteredQuestions = getWeightedRandomQuestions(questionsPool, selectedCount);
     } else if (orderType === 'random') {
-      // 純粋なランダムモード
       shuffleArray(questionsPool);
       filteredQuestions = questionsPool.slice(0, selectedCount);
     } else {
-      // 出題順（オリジナル）
       filteredQuestions = questionsPool.slice(0, selectedCount);
     }
 
@@ -765,6 +800,13 @@
 
   // --- AI無限特訓モード関連の処理 ---
   window.startAIQuiz = async function() {
+    const savedKey = localStorage.getItem('my_gemini_api_key');
+    if (!savedKey) {
+      alert("AIモードを使用するには、スタート画面の下部にある設定エリアに「Gemini APIキー」を入力して保存してください。");
+      document.getElementById('api-key-input').focus();
+      return;
+    }
+
     isAiMode = true;
     sessionAnswers = {};
     filteredQuestions = [];
@@ -787,7 +829,7 @@
     
     const newQ = await generateAIQuestion(genre, subgenre);
     if (!newQ) {
-        alert("問題の生成に失敗しました。時間をおいて再試行するか、通信環境をご確認ください。");
+        // エラー時はスタート画面に戻す
         window.goToStart();
         return;
     }
@@ -802,8 +844,9 @@
   }
 
   async function generateAIQuestion(genre, subgenre) {
-    const apiKey = ""; 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${apiKey}`;
+    // 修正：保存されたAPIキーを使用する
+    const apiKey = localStorage.getItem('my_gemini_api_key'); 
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`; // 安定板のGemini 1.5 Flashに変更
     
     let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
     if (genre && genre !== "all") {
@@ -838,9 +881,13 @@
     try {
       const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await response.json();
+      
+      if (!response.ok) {
+        throw new Error(result.error?.message || "API呼び出しエラー");
+      }
+
       if (result.candidates && result.candidates[0].content.parts[0].text) {
         const data = JSON.parse(result.candidates[0].content.parts[0].text);
-        // 万が一選択肢が5つ未満の場合はエラーとする
         if(!data.options || data.options.length < 2) throw new Error("Invalid options");
         
         return {
@@ -856,6 +903,7 @@
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\nAPIキーが間違っているか、通信エラーが発生しました。\n\n詳細: ${e.message}`);
     }
     return null;
   }
@@ -866,7 +914,6 @@
     const catText = q.subgenre ? `${q.genre} > ${q.subgenre}` : q.genre;
     document.getElementById("cat-label").textContent = catText;
     
-    // 傾向スコアが高いジャンルの場合は「頻出バッジ」を表示
     const score = subgenreTrendScores[q.subgenre] || 0;
     const isTrending = !isAiMode && score > 20; 
     document.getElementById("trend-label").style.display = isTrending ? "inline-block" : "none";
@@ -972,15 +1019,12 @@
 
   window.showResults = function() {
     let correctCount = 0;
-    
-    // AIモードなどで未回答の問題があれば除外する
     const questionsToEval = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
     
     questionsToEval.forEach(q => {
       const isCorrect = sessionAnswers[q.id] === q.answer;
       if (isCorrect) correctCount++;
       
-      // AI生成問題はhistory(弱点克服等)には保存しないが、総合成績には加算する
       if (!isAiMode) {
           if (!userMemory.history[q.id]) {
             userMemory.history[q.id] = { c: 0, w: 0 };
