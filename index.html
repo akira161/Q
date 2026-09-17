@@ -308,7 +308,7 @@
           <button class="nav-btn secondary" onclick="saveApiKey()" style="padding: 12px; width: auto; font-size: 0.9rem;">保存</button>
         </div>
         <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
-          ※APIキーはあなたtatsの端末内（ブラウザ）にのみ安全に保存されます。
+          ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
         </div>
       </div>
     </div>
@@ -383,7 +383,6 @@
   let sessionAnswers = {}; 
   let isAiMode = false; 
 
-  // クラウドではなくローカルストレージに保存するように簡易化
   let userMemory = {
     theme: 'light',
     stats: { total: 0, correct: 0 },
@@ -410,11 +409,9 @@
     switchScreen('screen-start');
   }
 
-  // --- APIキー管理 ---
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
     if (key) {
-      // 制限を解除（空文字でなければ許可）
       localStorage.setItem('my_gemini_api_key', key);
       const statusEl = document.getElementById('api-key-status');
       statusEl.textContent = "✅ ブラウザに安全に保存しました！";
@@ -434,9 +431,7 @@
       document.getElementById('api-key-input').value = savedKey;
     }
   }
-  // -------------------
 
-  // ローカルストレージを使用したデータの読み書き
   function loadUserData() {
     try {
       const savedData = localStorage.getItem('app_memory');
@@ -761,7 +756,7 @@
     renderQuestion();
   };
 
-  // --- AI無限特訓モード関連の処理 ---
+  // --- AI無限特訓モード関連 ---
   window.startAIQuiz = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
     if (!savedKey) {
@@ -806,10 +801,10 @@
   }
 
   async function generateAIQuestion(genre, subgenre) {
-    const apiKey = localStorage.getItem('my_gemini_api_key'); 
+    const apiKey = localStorage.getItem('my_gemini_api_key');
     
-    // 【重要】最新の安定モデル「gemini-2.5-flash」に変更しました（404エラー対策）
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`; 
+    // エンドポイントを gemini-3-flash に変更
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`; 
     
     let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
     if (genre && genre !== "all") {
@@ -822,36 +817,41 @@
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
 以下のテーマに関する、今年の試験に出題されそうな高度な専門知識を問う【五肢択一問題】を1問生成してください。
 テーマ: ${topicHint}
-問題は実用的で、技術士に求められる倫理観や課題解決能力を問う内容を含めてください。`;
+問題は実用的で、技術士に求められる倫理観や課題解決能力を問う内容を含めてください。
+
+必ず以下のJSONフォーマットのみで出力してください。Markdownのバッククォート(\`\`\`json)などは含めず、純粋なJSONテキストのみを返してください。
+
+{
+  "question": "問題文（「〜について、最も不適切なものはどれか」等の形式）",
+  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
+  "answer": 0,
+  "explanation": "各選択肢がなぜ正しい/誤っているかの詳しい解説"
+}`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json",
-        responseSchema: {
-          type: "OBJECT",
-          properties: {
-            question: { type: "STRING", description: "問題文（「〜について、最も不適切なものはどれか」等の形式）" },
-            options: { type: "ARRAY", items: { type: "STRING" }, description: "5つの選択肢" },
-            answer: { type: "INTEGER", description: "正解のインデックス（0〜4）" },
-            explanation: { type: "STRING", description: "各選択肢がなぜ正しい/誤っているかの詳しい解説" }
-          },
-          required: ["question", "options", "answer", "explanation"]
-        }
+        responseMimeType: "application/json"
       }
     };
 
     try {
-      const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const response = await fetch(apiUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
+      
       const result = await response.json();
       
       if (!response.ok) {
-        throw new Error(result.error?.message || "API呼び出しエラー");
+        throw new Error(`[${response.status}] ${result.error?.message || "API呼び出しエラー"}`);
       }
 
       if (result.candidates && result.candidates[0].content.parts[0].text) {
-        const data = JSON.parse(result.candidates[0].content.parts[0].text);
-        if(!data.options || data.options.length < 2) throw new Error("Invalid options");
+        const textData = result.candidates[0].content.parts[0].text;
+        const data = JSON.parse(textData);
+        if(!data.options || data.options.length !== 5) throw new Error("AIが正しい形式の選択肢を生成しませんでした");
         
         return {
           id: "AI-" + Date.now(),
@@ -866,11 +866,11 @@
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\nAPIキーが間違っているか、通信エラーが発生しました。\n\n詳細: ${e.message}\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n詳細:\nAPIキーが間違っているか、通信エラーが発生しました。`);
     }
     return null;
   }
-  // --- AIモード関連おわり ---
+  // --- AI無限特訓モード関連おわり ---
 
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
