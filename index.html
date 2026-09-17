@@ -115,7 +115,6 @@
     #memory-filter { border: 2px solid rgba(59, 130, 246, 0.4); background: var(--info-bg); font-weight: bold;}
     #memory-filter:focus { border-color: var(--primary); }
     
-    /* 傾向重視用スタイル */
     select#order-filter option[value="trend"] { color: var(--trend-text); font-weight: bold; }
 
     .target-count-box {
@@ -137,7 +136,6 @@
     .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
     
-    /* 傾向バッジ */
     .trend-badge { background: var(--trend-bg); color: var(--trend-text); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px; border: 1px solid rgba(194, 65, 12, 0.3); }
 
     .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 24px; white-space: pre-wrap; }
@@ -182,7 +180,6 @@
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
     
-    /* AIモード用スタイル */
     #start-ai-btn {
       background: linear-gradient(135deg, #8b5cf6, #d946ef);
       box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
@@ -193,7 +190,6 @@
     }
     #ai-loading { display: none; text-align: center; padding: 40px 20px; }
 
-    /* 設定エリア */
     .settings-area {
       margin-top: 32px;
       padding-top: 24px;
@@ -235,7 +231,7 @@
     <div class="memory-summary">
       <div class="ms-title">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
-        あなたのクラウド学習記録
+        あなたの端末内の学習記録
       </div>
       <div class="ms-stats">
         <div><span>総解答数</span><b id="ms-total">0</b></div>
@@ -303,13 +299,12 @@
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 無限特訓モード</button>
 
-    <!-- 追加：APIキー設定エリア -->
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
       <div class="filter-group">
-        <label for="api-key-input">Gemini APIキー</label>
+        <label for="api-key-input">Gemini APIキー (AQ. または AIza から始まる文字)</label>
         <div style="display: flex; gap: 8px;">
-          <input type="password" id="api-key-input" class="filter-input" placeholder="取得したAPIキーを入力" style="flex: 1;">
+          <input type="password" id="api-key-input" class="filter-input" placeholder="AQ. または AIza..." style="flex: 1;">
           <button class="nav-btn secondary" onclick="saveApiKey()" style="padding: 12px; width: auto; font-size: 0.9rem;">保存</button>
         </div>
         <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
@@ -371,11 +366,7 @@
 
 </div>
 
-<script type="module">
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-  import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-  import { getFirestore, doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
+<script>
   const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
   const SHEET_NAME = "過去問マスターDB";
 
@@ -392,19 +383,15 @@
   let sessionAnswers = {}; 
   let isAiMode = false; 
 
+  // クラウドではなくローカルストレージに保存するように簡易化
   let userMemory = {
     theme: 'light',
     stats: { total: 0, correct: 0 },
     history: {} 
   };
   
-  let app, auth, db, userId;
-  const appId = typeof __app_id !== 'undefined' ? __app_id : 'sanitary-eng-exam-app';
-  const firebaseConfigStr = typeof __firebase_config !== 'undefined' ? __firebase_config : '{}';
-
   window.onload = async () => {
     try {
-      await initFirebase();
       await loadExcelData();
       finishInit();
     } catch (error) {
@@ -415,10 +402,11 @@
   };
 
   function finishInit() {
+    loadUserData();
     initApp();
     applyTheme(); 
     updateMemoryUI(); 
-    loadApiKey(); // 起動時に保存されたAPIキーを読み込む
+    loadApiKey();
     switchScreen('screen-start');
   }
 
@@ -426,6 +414,7 @@
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
     if (key) {
+      // 制限を解除（空文字でなければ許可）
       localStorage.setItem('my_gemini_api_key', key);
       const statusEl = document.getElementById('api-key-status');
       statusEl.textContent = "✅ ブラウザに安全に保存しました！";
@@ -447,50 +436,24 @@
   }
   // -------------------
 
-  async function initFirebase() {
+  // ローカルストレージを使用したデータの読み書き
+  function loadUserData() {
     try {
-      const config = JSON.parse(firebaseConfigStr);
-      if (Object.keys(config).length === 0) return;
-      
-      app = initializeApp(config);
-      auth = getAuth(app);
-      db = getFirestore(app);
-      
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-          await signInAnonymously(auth);
-      }
-      
-      userId = auth.currentUser?.uid;
-      if (userId) {
-        await loadUserData();
+      const savedData = localStorage.getItem('app_memory');
+      if (savedData) {
+        userMemory = JSON.parse(savedData);
       }
     } catch (e) {
-      console.warn("Firebase Init failed, running locally");
+      console.error("メモリの読み込みエラー", e);
     }
   }
 
-  async function loadUserData() {
-    if (!userId || !db) return;
-    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'appData', 'memory');
+  function saveUserData() {
     try {
-      const docSnap = await getDoc(docRef);
-      if (docSnap.exists()) {
-        const data = docSnap.data();
-        if (data.theme) userMemory.theme = data.theme;
-        if (data.stats) userMemory.stats = data.stats;
-        if (data.history) userMemory.history = data.history;
-      }
-    } catch (e) {}
-  }
-
-  async function saveUserData() {
-    if (!userId || !db) return;
-    const docRef = doc(db, 'artifacts', appId, 'users', userId, 'appData', 'memory');
-    try {
-      await setDoc(docRef, userMemory, { merge: true });
-    } catch (e) {}
+      localStorage.setItem('app_memory', JSON.stringify(userMemory));
+    } catch (e) {
+      console.error("メモリの保存エラー", e);
+    }
   }
 
   function applyTheme() {
@@ -829,7 +792,6 @@
     
     const newQ = await generateAIQuestion(genre, subgenre);
     if (!newQ) {
-        // エラー時はスタート画面に戻す
         window.goToStart();
         return;
     }
@@ -845,7 +807,9 @@
 
   async function generateAIQuestion(genre, subgenre) {
     const apiKey = localStorage.getItem('my_gemini_api_key'); 
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`; 
+    
+    // 【重要】最新の安定モデル「gemini-2.5-flash」に変更しました（404エラー対策）
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`; 
     
     let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
     if (genre && genre !== "all") {
@@ -902,7 +866,7 @@
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\nAPIキーが間違っているか、通信エラーが発生しました。\n\n詳細: ${e.message}`);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\nAPIキーが間違っているか、通信エラーが発生しました。\n\n詳細: ${e.message}\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
     }
     return null;
   }
