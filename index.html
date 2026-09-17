@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <!-- スマホ向けの表示領域最適化と自動ズーム抑制 -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>技術士 一問一答</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --bg: #f1f5f9;
+      --card: #ffffff;
+      --text: #0f172a;
+      --border: #e2e8f0;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+      --danger-bg: #fee2e2;
+      --danger-text: #b91c1c;
+    }
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 12px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      width: 100%;
+      max-width: 500px;
+      background: var(--card);
+      padding: 20px 16px;
+      border-radius: 16px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    .question-box {
+      font-size: 1.05rem;
+      font-weight: 600;
+      line-height: 1.5;
+      margin-bottom: 18px;
+      white-space: pre-wrap;
+    }
+    .options {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .option-btn {
+      text-align: left;
+      padding: 14px;
+      border: 1.5px solid var(--border);
+      border-radius: 12px;
+      background: #fff;
+      font-size: 0.95rem;
+      line-height: 1.4;
+      color: var(--text);
+      cursor: pointer;
+    }
+    .option-btn:active:not(:disabled) {
+      background-color: #f8fafc;
+      transform: scale(0.99);
+    }
+    .option-btn.correct {
+      background-color: var(--success-bg);
+      border-color: var(--success-text);
+      color: var(--success-text);
+      font-weight: bold;
+    }
+    .option-btn.wrong {
+      background-color: var(--danger-bg);
+      border-color: var(--danger-text);
+      color: var(--danger-text);
+      font-weight: bold;
+    }
+    .explanation-box {
+      margin-top: 18px;
+      padding: 14px;
+      border-radius: 10px;
+      background-color: #f8fafc;
+      border-left: 4px solid var(--primary);
+      display: none;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      white-space: pre-wrap;
+    }
+    .explanation-box.show {
+      display: block;
+    }
+    .result-status {
+      font-size: 1rem;
+      font-weight: bold;
+      margin-bottom: 6px;
+    }
+    .controls {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .nav-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      background-color: var(--primary);
+      color: white;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .nav-btn:disabled {
+      background-color: #cbd5e1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <span id="cat-label">分野</span>
+    <span id="prog-label">問 1 / 1</span>
+  </div>
+
+  <div class="question-box" id="q-text"></div>
+  <div class="options" id="opt-box"></div>
+
+  <div class="explanation-box" id="exp-box">
+    <div class="result-status" id="res-status"></div>
+    <div id="exp-text"></div>
+  </div>
+
+  <div class="controls">
+    <button class="nav-btn" id="prev-btn" onclick="goPrev()">前へ</button>
+    <button class="nav-btn" id="next-btn" onclick="goNext()">次へ</button>
+  </div>
+</div>
+
+<script>
+  const questions = [
+    {
+      id: 1,
+      category: "基礎科目 / 設計・材料",
+      question: "応力とひずみに関する記述として、最も適切なものはどれか。",
+      options: [
+        "フックの法則が成り立つ弾性限度内では、応力はひずみに反比例する。",
+        "ポアソン比は、軸方向ひずみに対する横方向ひずみの絶対値の比である。",
+        "材料の引張強さは、弾性限度における応力値を指す。",
+        "せん断弾性係数は、縦弾性係数とポアソン比から独立して一意に決まる。",
+        "応力集中は、断面変化が緩やかな箇所ほど顕著に生じる。"
+      ],
+      answer: 1,
+      explanation: "【正解】2\nポアソン比は「横ひずみ / 縦ひずみ」の絶対値で定義されます。\n1：応力とひずみは比例関係です。\n3：引張強さは最大引張荷重を初期断面積で割った最大値です。"
+    },
+    {
+      id: 2,
+      category: "適性科目 / 技術者倫理",
+      question: "公益確保に関する記述として、最も適切なものはどれか。",
+      options: [
+        "公衆の安全や健康への重大な脅威が判明した場合、秘密保持義務よりも公の安全を優先して措置を講じる必要がある。",
+        "依頼主の要求仕様書に法令違反の疑いがあっても、秘密保持義務が常に最優先される。",
+        "事故防止対策のコストが想定利益を超える場合、安全設計の基準を緩和することが許される。",
+        "専門外の分野であっても、納期が逼迫している場合は独断で設計・承認を進めるべきである。"
+      ],
+      answer: 0,
+      explanation: "【正解】1\n技術士倫理綱領において、公衆の安全・健康・福利の優先は最上位の原則であり、依頼者に対する秘密保持義務より優先されます。"
+    }
+  ];
+
+  let curIdx = 0;
+  // LocalStorageから前回の回答履歴を復帰
+  let savedAnswers = JSON.parse(localStorage.getItem("pe_quiz_ans") || "{}");
+
+  function render() {
+    const q = questions[curIdx];
+    document.getElementById("cat-label").textContent = q.category;
+    document.getElementById("prog-label").textContent = `問 ${curIdx + 1} / ${questions.length}`;
+    document.getElementById("q-text").textContent = q.question;
+
+    const optBox = document.getElementById("opt-box");
+    optBox.innerHTML = "";
+
+    const expBox = document.getElementById("exp-box");
+    const statusBox = document.getElementById("res-status");
+    const expTextBox = document.getElementById("exp-text");
+
+    const hasAnswered = savedAnswers.hasOwnProperty(curIdx);
+
+    q.options.forEach((opt, idx) => {
+      const btn = document.createElement("button");
+      btn.className = "option-btn";
+      btn.textContent = `${idx + 1}. ${opt}`;
+
+      if (hasAnswered) {
+        btn.disabled = true;
+        if (idx === q.answer) btn.classList.add("correct");
+        if (savedAnswers[curIdx] === idx && idx !== q.answer) btn.classList.add("wrong");
+      } else {
+        btn.onclick = () => selectOpt(idx);
+      }
+      optBox.appendChild(btn);
+    });
+
+    if (hasAnswered) {
+      const isRight = savedAnswers[curIdx] === q.answer;
+      statusBox.textContent = isRight ? "〇 正解" : "× 不正解";
+      statusBox.style.color = isRight ? "var(--success-text)" : "var(--danger-text)";
+      expTextBox.textContent = q.explanation;
+      expBox.classList.add("show");
+    } else {
+      expBox.classList.remove("show");
+    }
+
+    document.getElementById("prev-btn").disabled = curIdx === 0;
+    document.getElementById("next-btn").disabled = curIdx === questions.length - 1;
+  }
+
+  function selectOpt(idx) {
+    savedAnswers[curIdx] = idx;
+    localStorage.setItem("pe_quiz_ans", JSON.stringify(savedAnswers));
+    render();
+  }
+
+  function goPrev() {
+    if (curIdx > 0) { curIdx--; render(); }
+  }
+
+  function goNext() {
+    if (curIdx < questions.length - 1) { curIdx++; render(); }
+  }
+
+  render();
+</script>
+</body>
+</html>
