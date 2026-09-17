@@ -803,8 +803,8 @@
   async function generateAIQuestion(genre, subgenre) {
     const apiKey = localStorage.getItem('my_gemini_api_key');
     
-    // エンドポイントを gemini-3-flash に変更
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash:generateContent?key=${apiKey}`; 
+    // エンドポイントを gemini-3.6-flash に変更
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`; 
     
     let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
     if (genre && genre !== "all") {
