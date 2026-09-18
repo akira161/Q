@@ -11,8 +11,8 @@
 
   <style>
     :root {
-      --primary: #2563eb;
-      --primary-hover: #1d4ed8;
+      --primary: #4338ca;
+      --primary-hover: #3730a3;
       --bg: #f8fafc;
       --card: #ffffff;
       --text: #0f172a;
@@ -33,8 +33,8 @@
     }
     
     [data-theme="dark"] {
-      --primary: #3b82f6;
-      --primary-hover: #60a5fa;
+      --primary: #6366f1;
+      --primary-hover: #818cf8;
       --bg: #0f172a;
       --card: #1e293b;
       --text: #f1f5f9;
@@ -48,7 +48,7 @@
       --danger-text: #f87171;
       --danger-btn: #ef4444;
       --danger-btn-hover: #f87171;
-      --info-bg: rgba(59, 130, 246, 0.15);
+      --info-bg: rgba(99, 102, 241, 0.15);
       --trend-bg: rgba(194, 65, 12, 0.15);
       --trend-text: #fb923c;
     }
@@ -114,7 +114,7 @@
     .filter-select:focus, .filter-input:focus { outline: none; border-color: var(--primary); background-color: var(--input-focus); }
     .filter-select option:disabled { color: var(--text-muted); font-style: italic; opacity: 0.5; }
     
-    #memory-filter { border: 2px solid rgba(59, 130, 246, 0.4); background: var(--info-bg); font-weight: bold;}
+    #memory-filter { border: 2px solid rgba(99, 102, 241, 0.4); background: var(--info-bg); font-weight: bold;}
     #memory-filter:focus { border-color: var(--primary); }
     
     select#order-filter option[value="trend"] { color: var(--trend-text); font-weight: bold; }
@@ -128,7 +128,7 @@
     .nav-btn { 
       width: 100%; padding: 16px; border: none; background-color: var(--primary); 
       color: white; border-radius: var(--radius); font-size: 1.05rem; font-weight: bold; 
-      cursor: pointer; text-align: center; transition: 0.2s; box-shadow: 0 2px 4px rgba(37,99,235,0.2);
+      cursor: pointer; text-align: center; transition: 0.2s; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
     }
     .nav-btn:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
     .nav-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
@@ -138,12 +138,18 @@
     .nav-btn.danger { background-color: var(--danger-btn); box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2); }
     .nav-btn.danger:hover:not(:disabled) { background-color: var(--danger-btn-hover); }
     
-    .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
-    
     .trend-badge { background: var(--trend-bg); color: var(--trend-text); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px; border: 1px solid rgba(194, 65, 12, 0.3); }
 
-    .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 24px; white-space: pre-wrap; }
+    .q-source-badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; 
+      font-size: 0.8rem; font-weight: bold; margin-bottom: 12px; transition: 0.3s;
+    }
+
+    .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+    .question-image { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+
     .options { display: flex; flex-direction: column; gap: 12px; }
     .option-btn {
       text-align: left; padding: 16px; border: 2px solid var(--border); border-radius: var(--radius); 
@@ -159,9 +165,8 @@
     .explanation-box.show { display: block; }
     .result-status { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     
-    /* AI解説追加用CSS */
-    #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(139, 92, 246, 0.3); border-radius: 8px; background: rgba(139, 92, 246, 0.05); display: none; animation: fadeIn 0.4s; }
-    .ai-exp-title { color: #8b5cf6; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(139, 92, 246, 0.3); padding-bottom: 8px; }
+    #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 8px; background: rgba(168, 85, 247, 0.05); display: none; animation: fadeIn 0.4s; }
+    .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
     #ai-explain-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; }
 
     .controls { display: flex; gap: 12px; margin-top: 32px; }
@@ -191,27 +196,12 @@
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
     
-    #start-ai-btn {
-      background: linear-gradient(135deg, #8b5cf6, #d946ef);
-      box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);
-      margin-top: 16px;
-    }
-    #start-ai-btn:hover:not(:disabled) {
-      background: linear-gradient(135deg, #7c3aed, #c026d3);
-    }
+    #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
+    #start-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #9333ea, #c026d3); }
     #ai-loading { display: none; text-align: center; padding: 40px 20px; }
 
-    .settings-area {
-      margin-top: 32px;
-      padding-top: 24px;
-      border-top: 2px dashed var(--border);
-    }
-    .settings-area h3 {
-      font-size: 1rem;
-      color: var(--text-muted);
-      margin-top: 0;
-      margin-bottom: 12px;
-    }
+    .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
+    .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
   </style>
 </head>
 <body>
@@ -230,7 +220,7 @@
     <div id="upload-content" style="display: none; text-align: left;">
       <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; line-height: 1.5;">
         セキュリティ制限によりExcelファイルを自動読み込みできません。<br>
-        お手数ですが、以下のボタンから直接 <b>Sanitary_Engineering_Exam_DB_v15.xlsx</b> を選択してください。
+        お手数ですが、以下のボタンから直接 <b>最新のデータベースExcelファイル</b> を選択してください。
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
     </div>
@@ -262,7 +252,7 @@
         </select>
       </div>
 
-      <div class="filter-group">
+      <div class="filter-group" style="grid-column: 1 / -1;">
         <label for="keyword-filter">キーワード検索</label>
         <input type="text" id="keyword-filter" class="filter-input" placeholder="問題文や解説に含まれる語句" oninput="updateFilterUI()">
       </div>
@@ -323,7 +313,6 @@
         </div>
       </div>
       
-      <!-- データ管理（リセット機能）のセクション -->
       <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
       <h3>🗑️ データ管理</h3>
       <div class="filter-group">
@@ -345,25 +334,28 @@
       <span id="prog-label">問 1 / 1</span>
     </div>
 
+    <!-- 出典（ソース）表示バッジ -->
+    <div id="q-source" class="q-source-badge"></div>
+
     <div id="ai-loading">
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+      <div style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
+    <div id="q-image-container" style="display: none; text-align: center;"></div>
     <div class="options" id="opt-box"></div>
 
     <div class="explanation-box" id="exp-box">
       <div class="result-status" id="res-status"></div>
       <div id="exp-text"></div>
       
-      <!-- AI詳細解説機能 UI -->
-      <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #8b5cf6, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(139, 92, 246, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
+      <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
       
-      <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(139,92,246,0.05); border-radius: 8px; border: 1px dashed rgba(139,92,246,0.3);">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-        <div style="font-weight: bold; color: #8b5cf6; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
+      <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(168,85,247,0.05); border-radius: 8px; border: 1px dashed rgba(168,85,247,0.3);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+        <div style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
       </div>
       
       <div id="ai-explain-result">
@@ -373,7 +365,6 @@
         </div>
         <div id="ai-explain-text"></div>
       </div>
-      
     </div>
 
     <div class="controls">
@@ -406,7 +397,8 @@
 </div>
 
 <script>
-  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
+  // ファイル名を最新版 (v28) にアップデート
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
   const SHEET_NAME = "過去問マスターDB";
 
   let allQuestions = [];
@@ -471,7 +463,6 @@
     }
   }
 
-  // --- 学習データのロードとセーブ ---
   function loadUserData() {
     try {
       const savedData = localStorage.getItem('app_memory');
@@ -491,17 +482,13 @@
     }
   }
   
-  // --- 学習記録リセット機能 ---
   window.resetHistory = function() {
     if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
-      // 統計と履歴だけを初期化（テーマ設定は保持）
       userMemory.stats = { total: 0, correct: 0 };
       userMemory.history = {};
-      
       saveUserData();
-      updateMemoryUI(); // UI上の数字を0に
-      updateFilterUI(); // 未回答フィルターなどの計算をやり直す
-      
+      updateMemoryUI(); 
+      updateFilterUI(); 
       alert("学習記録をリセットしました。");
     }
   };
@@ -589,14 +576,24 @@
         if(opt) options.push(opt);
       }
       
-      let ansIdx = parseInt(row['公式正答']) - 1;
-      if(isNaN(ansIdx)) ansIdx = 0;
+      // 正解番号の読み取り処理をより堅牢に
+      let rawAns = String(row['公式正答'] || '').trim();
+      rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+      let ansIdx = 0;
+      if (/^[1-5]$/.test(rawAns)) {
+          ansIdx = parseInt(rawAns) - 1;
+      } else {
+          let ansMatch = rawAns.match(/[1-5]/);
+          if (ansMatch) ansIdx = parseInt(ansMatch[0]) - 1;
+      }
       
       const theme = String(row['問題のテーマ・内容概要'] || '').trim();
       const exp = theme ? `【テーマ・内容概要】\n${theme}` : "【解説】\n詳細な解説はありません。";
       
+      const imgName = String(row['画像ファイル名'] || row['画像URL'] || '').trim();
+      
       return {
-        id: String(row['問題ID'] || `Q${index+1}`),
+        id: String(row['問題ID'] || row['設問番号'] || `Q${index+1}`),
         year: yearStr,
         yearNum: yearNum,
         genre: block,
@@ -604,7 +601,8 @@
         question: String(row['問題文'] || '').trim(),
         options: options,
         answer: ansIdx,
-        explanation: exp
+        explanation: exp,
+        imageUrl: imgName 
       };
     }).filter(q => q.question !== "");
   }
@@ -806,12 +804,12 @@
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('q-text').style.display = 'block';
     document.getElementById('opt-box').style.display = 'flex';
+    document.getElementById('q-source').style.display = 'inline-flex';
     
     switchScreen('screen-quiz');
     renderQuestion();
   };
 
-  // --- AI 5問一括生成モード ---
   window.startAIQuiz = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
     if (!savedKey) {
@@ -831,7 +829,9 @@
 
   async function generateAIQuestionsBatch(useLiteModel = false) {
     document.getElementById('q-text').style.display = 'none';
+    document.getElementById('q-image-container').style.display = 'none';
     document.getElementById('opt-box').style.display = 'none';
+    document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('next-btn').disabled = true;
@@ -871,6 +871,7 @@ ${refText}
 【指示】
 ・過去問の単なるコピーではなく、上記をベースに最新動向や関連知識を組み合わせたオリジナル問題にすること。
 ・出題範囲ができるだけ重複しないように幅広く作成すること。
+・※重要：システム上、図表や画像を表示できません。そのため、「図Aに示す〜」「下表について〜」など、図表を用いないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
 
 必ず以下のJSONフォーマットで、テキストやMarkdownの装飾(バッククォート等)を一切含めず、純粋なJSON文字列のみを出力してください。
 {
@@ -927,13 +928,15 @@ ${refText}
               question: qData.question,
               options: qData.options,
               answer: qData.answer,
-              explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`
+              explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`,
+              imageUrl: "" 
             });
         });
 
         document.getElementById('ai-loading').style.display = 'none';
         document.getElementById('q-text').style.display = 'block';
         document.getElementById('opt-box').style.display = 'flex';
+        document.getElementById('q-source').style.display = 'inline-flex';
         
         curIdx = startIndex;
         renderQuestion();
@@ -947,16 +950,37 @@ ${refText}
     }
   }
 
-  // --- 問題の描画と選択処理 ---
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
     
-    // UIの更新
     document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
     document.getElementById('q-text').textContent = q.question;
     
-    // トレンドバッジの表示制御
+    // 出典バッジの表示制御
+    const sourceEl = document.getElementById('q-source');
+    if (isAiMode) {
+      sourceEl.innerHTML = '✨ AIオリジナル予想問題';
+      sourceEl.style.color = '#a855f7';
+      sourceEl.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+      sourceEl.style.background = 'rgba(168, 85, 247, 0.05)';
+    } else {
+      let idText = q.id.startsWith('Q') ? '' : ` ${q.id}`; 
+      sourceEl.innerHTML = `📖 出典: ${q.year}${idText}`;
+      sourceEl.style.color = 'var(--text-muted)';
+      sourceEl.style.borderColor = 'var(--border)';
+      sourceEl.style.background = 'var(--bg)';
+    }
+
+    const imgContainer = document.getElementById("q-image-container");
+    if (q.imageUrl) {
+        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="問題図">`;
+        imgContainer.style.display = "block";
+    } else {
+        imgContainer.innerHTML = "";
+        imgContainer.style.display = "none";
+    }
+
     const trendLabel = document.getElementById('trend-label');
     if (!isAiMode && subgenreTrendScores[q.subgenre] >= 8) {
         trendLabel.style.display = "inline-block";
@@ -964,78 +988,70 @@ ${refText}
         trendLabel.style.display = "none";
     }
 
-    // 選択肢ボタンの生成
     const optBox = document.getElementById('opt-box');
     optBox.innerHTML = ''; 
     
+    const hasAnswered = sessionAnswers.hasOwnProperty(q.id);
+
     q.options.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
         btn.textContent = `${idx + 1}. ${opt}`;
-        btn.onclick = () => selectOption(idx);
+        
+        if (hasAnswered) {
+          btn.disabled = true;
+          if (idx === q.answer) btn.classList.add("correct");
+          if (sessionAnswers[q.id] === idx && idx !== q.answer) btn.classList.add("wrong");
+        } else {
+          btn.onclick = () => selectOption(idx);
+        }
+        
         optBox.appendChild(btn);
     });
 
-    // 解説やAIエリアを初期化（非表示にする）
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('ai-explain-result').style.display = 'none';
     document.getElementById('ai-explain-btn').style.display = 'none';
     
-    // 「次へ」ボタンの状態制御
     const nextBtn = document.getElementById('next-btn');
-    nextBtn.disabled = true;
     
-    // AIモードで最後の問題(5問目)に到達した場合
-    if (isAiMode && curIdx === filteredQuestions.length - 1) {
-        nextBtn.textContent = '次のAI予想問題へ';
-        nextBtn.onclick = () => generateAIQuestionsBatch();
-    } else if (curIdx === filteredQuestions.length - 1) {
-        nextBtn.textContent = '結果を見る';
-        nextBtn.onclick = showResults;
+    if (hasAnswered) {
+      const isCorrect = sessionAnswers[q.id] === q.answer;
+      const resStatus = document.getElementById('res-status');
+      resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
+      document.getElementById('exp-text').textContent = q.explanation;
+      document.getElementById('exp-box').classList.add('show');
+      
+      if (!isAiMode) {
+        document.getElementById('ai-explain-btn').style.display = 'block';
+      }
+      
+      nextBtn.disabled = false;
+      if (isAiMode && curIdx === filteredQuestions.length - 1) {
+          nextBtn.textContent = '次のAI予想問題へ';
+          nextBtn.onclick = () => generateAIQuestionsBatch();
+      } else if (curIdx === filteredQuestions.length - 1) {
+          nextBtn.textContent = '結果を見る';
+          nextBtn.onclick = showResults;
+      } else {
+          nextBtn.textContent = '次の問題へ';
+          nextBtn.onclick = goNext;
+      }
     } else {
-        nextBtn.textContent = '次の問題へ';
-        nextBtn.onclick = goNext;
+      nextBtn.disabled = true;
+      nextBtn.textContent = '回答を選択してください';
+      nextBtn.onclick = null;
     }
   }
 
   window.selectOption = function(selectedIdx) {
     const q = filteredQuestions[curIdx];
-    sessionAnswers[q.id] = selectedIdx; // 回答を記録
-    const isCorrect = (selectedIdx === q.answer);
-
-    // ボタンの見た目を変える
-    const buttons = document.querySelectorAll('.option-btn');
-    buttons.forEach((btn, idx) => {
-        btn.disabled = true; 
-        if (idx === q.answer) {
-            btn.classList.add('correct'); 
-        } else if (idx === selectedIdx && !isCorrect) {
-            btn.classList.add('wrong'); 
-        }
-    });
-
-    // 正誤ステータスの表示
-    const resStatus = document.getElementById('res-status');
-    if (isCorrect) {
-        resStatus.innerHTML = '<span style="color:var(--success-text);">⭕ 正解</span>';
-    } else {
-        resStatus.innerHTML = '<span style="color:var(--danger-text);">❌ 不正解</span>';
-    }
-
-    // 解説テキストをセットして表示
-    document.getElementById('exp-text').textContent = q.explanation;
-    document.getElementById('exp-box').classList.add('show');
+    if(sessionAnswers.hasOwnProperty(q.id)) return;
     
-    // 「AI詳細解説機能」のボタンを表示（通常過去問モードのみ）
-    if (!isAiMode) {
-      document.getElementById('ai-explain-btn').style.display = 'block';
-    }
-    
-    // 「次へ」ボタンを有効化
-    document.getElementById('next-btn').disabled = false;
+    sessionAnswers[q.id] = selectedIdx; 
+    renderQuestion(); 
   }
 
-  // --- AI 詳細解説機能 ---
   window.askAIExplain = async function(useLiteModel = false) {
     const apiKey = localStorage.getItem('my_gemini_api_key');
     if (!apiKey) {
@@ -1085,7 +1101,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       if (!response.ok) {
         if (response.status === 429 && !useLiteModel) {
             console.warn("Rate limit exceeded for 3.6-flash explanation. Falling back to 3.5-flash-lite...");
-            return askAIExplain(true); // Liteモデルで再試行
+            return askAIExplain(true); 
         }
         throw new Error(`[${response.status}] ${result.error?.message || "API呼び出しエラー"}`);
       }
