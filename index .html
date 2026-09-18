@@ -1,0 +1,1405 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>技術士 衛生工学 過去問演習</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --primary: #4338ca;
+      --primary-hover: #3730a3;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --input-bg: #f8fafc;
+      --input-focus: #ffffff;
+      --success-bg: #dcfce7;
+      --success-text: #15803d;
+      --danger-bg: #fee2e2;
+      --danger-text: #b91c1c;
+      --danger-btn: #ef4444;
+      --danger-btn-hover: #dc2626;
+      --info-bg: #eff6ff;
+      --radius: 12px;
+      --trend-bg: #fff7ed;
+      --trend-text: #c2410c;
+    }
+    
+    [data-theme="dark"] {
+      --primary: #6366f1;
+      --primary-hover: #818cf8;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+      --input-bg: #0f172a;
+      --input-focus: #1e293b;
+      --success-bg: rgba(21, 128, 61, 0.2);
+      --success-text: #4ade80;
+      --danger-bg: rgba(185, 28, 28, 0.2);
+      --danger-text: #f87171;
+      --danger-btn: #ef4444;
+      --danger-btn-hover: #f87171;
+      --info-bg: rgba(99, 102, 241, 0.15);
+      --trend-bg: rgba(194, 65, 12, 0.15);
+      --trend-text: #fb923c;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px 12px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .container {
+      width: 100%;
+      max-width: 600px;
+      background: var(--card);
+      padding: 24px 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      align-self: flex-start;
+      transition: background-color 0.3s, box-shadow 0.3s;
+    }
+    
+    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px;}
+    .icon-btn { 
+      background: transparent; border: 1px solid var(--border); color: var(--text-muted); 
+      cursor: pointer; width: 36px; height: 36px; border-radius: 50%; 
+      display: flex; align-items: center; justify-content: center; transition: 0.2s;
+    }
+    .icon-btn:hover { background: var(--border); color: var(--text); }
+    .nav-link-btn {
+        background: transparent; border: 1px solid var(--primary); color: var(--primary);
+        cursor: pointer; height: 36px; border-radius: 18px; padding: 0 12px;
+        display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        font-size: 0.85rem; font-weight: bold; text-decoration: none;
+    }
+    .nav-link-btn:hover { background: var(--primary); color: white; }
+    
+    h2 { margin-top: 0; font-size: 1.35rem; text-align: center; color: var(--primary); border-bottom: 2px solid var(--border); padding-bottom: 14px; }
+    
+    .screen { display: none; animation: fadeIn 0.3s ease; }
+    .screen.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    
+    #screen-loading { text-align: center; padding: 60px 20px; color: var(--text-muted); font-weight: bold; line-height: 1.6; }
+    .spinner { animation: spin 1s linear infinite; margin-bottom: 20px; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+    
+    .memory-summary {
+      background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px; margin-bottom: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+    }
+    .ms-title { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;}
+    .ms-stats { display: flex; justify-content: space-around; text-align: center; margin-bottom: 16px; }
+    .ms-stats > div { display: flex; flex-direction: column; gap: 4px; }
+    .ms-stats span { font-size: 0.75rem; color: var(--text-muted); font-weight: bold;}
+    .ms-stats b { font-size: 1.3rem; color: var(--primary); font-weight: 800;}
+    .charts-wrapper { display: flex; flex-direction: column; gap: 16px; }
+    .chart-container { position: relative; height: 220px; width: 100%; display: flex; justify-content: center; }
+
+    .filter-grid { display: grid; gap: 16px; margin-bottom: 24px; }
+    .filter-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px; color: var(--text-muted); }
+    .filter-select, .filter-input { 
+      width: 100%; padding: 12px 14px; border-radius: 8px; border: 1px solid var(--border); 
+      font-size: 0.95rem; background-color: var(--input-bg); color: var(--text); 
+      transition: border-color 0.2s, background-color 0.3s, color 0.3s;
+    }
+    .filter-select:focus, .filter-input:focus { outline: none; border-color: var(--primary); background-color: var(--input-focus); }
+    .filter-select option:disabled { color: var(--text-muted); font-style: italic; opacity: 0.5; }
+    
+    #memory-filter { border: 2px solid rgba(99, 102, 241, 0.4); background: var(--info-bg); font-weight: bold;}
+    #memory-filter:focus { border-color: var(--primary); }
+    
+    select#order-filter option[value="trend"] { color: var(--trend-text); font-weight: bold; }
+
+    .target-count-box {
+      text-align: center; font-weight: bold; font-size: 1.1rem; padding: 12px;
+      background: var(--info-bg); color: var(--primary); border-radius: 8px; margin-bottom: 16px;
+      transition: 0.3s;
+    }
+
+    .nav-btn { 
+      width: 100%; padding: 16px; border: none; background-color: var(--primary); 
+      color: white; border-radius: var(--radius); font-size: 1.05rem; font-weight: bold; 
+      cursor: pointer; text-align: center; transition: 0.2s; box-shadow: 0 2px 4px rgba(99, 102, 241, 0.2);
+    }
+    .nav-btn:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
+    .nav-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
+    .nav-btn:disabled { background-color: var(--border); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+    
+    .nav-btn.secondary { background-color: var(--text-muted); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .nav-btn.danger { background-color: var(--danger-btn); box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2); }
+    .nav-btn.danger:hover:not(:disabled) { background-color: var(--danger-btn-hover); }
+    
+    .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
+    .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
+    
+    .trend-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin-left: 8px; border: 1px solid; display: none; }
+    .trend-lv5 { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .trend-lv4 { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+    .trend-lv3 { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+    .trend-lv2 { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+    .trend-lv1 { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+
+    [data-theme="dark"] .trend-lv5 { background: rgba(185, 28, 28, 0.2); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
+    [data-theme="dark"] .trend-lv4 { background: rgba(194, 65, 12, 0.2); color: #fdba74; border-color: rgba(251, 146, 60, 0.4); }
+    [data-theme="dark"] .trend-lv3 { background: rgba(133, 77, 14, 0.2); color: #fde047; border-color: rgba(250, 204, 21, 0.4); }
+    [data-theme="dark"] .trend-lv2 { background: rgba(21, 128, 61, 0.2); color: #86efac; border-color: rgba(74, 222, 128, 0.4); }
+    [data-theme="dark"] .trend-lv1 { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4); }
+
+    .q-source-badge {
+      display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; 
+      font-size: 0.8rem; font-weight: bold; margin-bottom: 12px; transition: 0.3s;
+    }
+
+    .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+    .question-image { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+
+    .options { display: flex; flex-direction: column; gap: 12px; }
+    .option-btn {
+      text-align: left; padding: 16px; border: 2px solid var(--border); border-radius: var(--radius); 
+      background: var(--card); font-size: 0.95rem; line-height: 1.5; color: var(--text); cursor: pointer; transition: all 0.2s;
+    }
+    .option-btn:hover:not(:disabled) { border-color: var(--text-muted); background: var(--bg); }
+    .option-btn:active:not(:disabled) { transform: scale(0.98); }
+    .option-btn.correct { background-color: var(--success-bg); border-color: var(--success-text); color: var(--success-text); font-weight: bold; }
+    .option-btn.wrong { background-color: var(--danger-bg); border-color: var(--danger-text); color: var(--danger-text); font-weight: bold; opacity: 0.8; }
+    .option-btn:disabled { cursor: default; }
+    
+    .explanation-box { margin-top: 24px; padding: 16px; border-radius: var(--radius); background-color: var(--bg); border-left: 5px solid var(--primary); display: none; font-size: 0.95rem; line-height: 1.6; white-space: pre-wrap; animation: fadeIn 0.4s; }
+    .explanation-box.show { display: block; }
+    .result-status { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+    
+    #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 8px; background: rgba(168, 85, 247, 0.05); display: none; animation: fadeIn 0.4s; }
+    .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
+    #ai-explain-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; }
+
+    .controls { display: flex; gap: 12px; margin-top: 32px; }
+    .controls .nav-btn.secondary { flex: 0.4; }
+    .controls .nav-btn#next-btn { flex: 1; }
+    
+    .score-box { text-align: center; padding: 24px; background-color: var(--bg); border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--border); }
+    .score-number { font-size: 3rem; font-weight: 800; color: var(--primary); margin: 8px 0; line-height: 1;}
+    
+    .history-filter { display: flex; gap: 8px; margin-bottom: 16px; background: var(--bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
+    .history-filter label { flex: 1; text-align: center; padding: 8px; font-size: 0.9rem; font-weight: bold; color: var(--text-muted); cursor: pointer; border-radius: 6px; transition: 0.2s; }
+    .history-filter input { display: none; }
+    .history-filter input:checked + span { color: var(--primary); }
+    .history-filter label:has(input:checked) { background: var(--card); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    
+    .history-list { display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+    .history-item { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.9rem; line-height: 1.5; }
+    .hi-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; color: var(--text-muted); border-bottom: 1px dashed var(--border); padding-bottom: 8px;}
+    .hi-q { margin-bottom: 12px; font-weight: 600; color: var(--text); }
+    .hi-ans { display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px;}
+    .hi-mark { font-weight: bold; font-size: 1.1rem; padding: 2px 8px; border-radius: 4px; }
+    .hi-correct { border-left: 4px solid var(--success-text); }
+    .hi-wrong { border-left: 4px solid var(--danger-text); }
+    .hi-correct .hi-mark { background: var(--success-bg); color: var(--success-text); }
+    .hi-wrong .hi-mark { background: var(--danger-bg); color: var(--danger-text); }
+    .ans-row { display: flex; gap: 8px; }
+    .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
+    .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
+    
+    #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
+    #start-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #9333ea, #c026d3); }
+    #ai-loading { display: none; text-align: center; padding: 40px 20px; }
+
+    .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
+    .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+  </style>
+</head>
+<body>
+
+<div class="container" id="app-container">
+  
+  <div class="top-bar">
+    <a href="viewer.html" class="nav-link-btn" title="まとめノートを閲覧">📚 まとめ閲覧</a>
+    <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
+  </div>
+
+  <div id="screen-loading" class="screen active">
+    <div id="loading-content">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+      <br>システムとデータを同期しています...<br><span style="font-size:0.85rem; font-weight:normal; margin-top:8px; display:inline-block;">しばらくお待ちください。</span>
+    </div>
+    <div id="upload-content" style="display: none; text-align: left;">
+      <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; line-height: 1.5;">
+        セキュリティ制限によりExcelファイルを自動読み込みできません。<br>
+        お手数ですが、以下のボタンから直接 <b>最新のデータベースExcelファイル</b> を選択してください。
+      </div>
+      <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
+    </div>
+  </div>
+
+  <div id="screen-start" class="screen">
+    <h2>出題設定</h2>
+    
+    <div class="memory-summary">
+      <div class="ms-title">
+        <div style="display: flex; align-items: center; gap: 6px;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+          あなたの端末内の学習記録
+        </div>
+      </div>
+      <div class="ms-stats">
+        <div><span>総解答数</span><b id="ms-total">0</b></div>
+        <div><span>正解数</span><b id="ms-correct">0</b></div>
+        <div><span>通算正答率</span><b id="ms-rate">0%</b></div>
+      </div>
+      <div class="charts-wrapper">
+        <div class="chart-container">
+          <canvas id="radarChart"></canvas>
+        </div>
+      </div>
+    </div>
+    
+    <div class="filter-grid">
+      <div class="filter-group" style="grid-column: 1 / -1;">
+        <label for="memory-filter">📝 学習状況フィルター（弱点克服）</label>
+        <select id="memory-filter" class="filter-select" onchange="updateFilterUI()">
+          <option value="all">すべての問題から出題</option>
+          <option value="unanswered">未回答の問題を優先</option>
+          <option value="wrong">過去に間違えた問題を優先 (復習)</option>
+          <option value="perfect">過去に正解した問題のみ</option>
+        </select>
+      </div>
+
+      <div class="filter-group" style="grid-column: 1 / -1;">
+        <label for="keyword-filter">キーワード検索</label>
+        <input type="text" id="keyword-filter" class="filter-input" placeholder="問題文や解説に含まれる語句" oninput="updateFilterUI()">
+      </div>
+
+      <div class="filter-group">
+        <label for="year-filter">年度</label>
+        <select id="year-filter" class="filter-select" onchange="updateFilterUI()"></select>
+      </div>
+      
+      <div class="filter-group">
+        <label for="genre-filter">大分類</label>
+        <select id="genre-filter" class="filter-select" onchange="updateFilterUI()"></select>
+      </div>
+
+      <div class="filter-group" style="grid-column: 1 / -1;">
+        <label for="subgenre-filter">小分類（サブジャンル）</label>
+        <select id="subgenre-filter" class="filter-select" onchange="updateFilterUI()"></select>
+      </div>
+
+      <div style="display: flex; gap: 12px; grid-column: 1 / -1;">
+        <div class="filter-group" style="flex: 1;">
+          <label for="order-filter">出題順序・モード</label>
+          <select id="order-filter" class="filter-select">
+            <option value="trend" selected>🔥 傾向重視（最近の頻出優先）</option>
+            <option value="random">ランダム順</option>
+            <option value="original">出題順（年度・番号）</option>
+          </select>
+        </div>
+        <div class="filter-group" style="flex: 1;">
+          <label for="count-filter">出題数</label>
+          <select id="count-filter" class="filter-select">
+            <option value="all">すべて出題</option>
+            <option value="5">5問</option>
+            <option value="10" selected>10問</option>
+            <option value="20">20問</option>
+            <option value="30">30問</option>
+            <option value="50">50問</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
+    
+    <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
+    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
+
+    <div class="settings-area">
+      <h3>⚙️ AIモード用設定</h3>
+      <div class="filter-group">
+        <label for="api-key-input">Gemini APIキー</label>
+        <div style="display: flex; gap: 8px;">
+          <input type="password" id="api-key-input" class="filter-input" placeholder="APIキーを入力..." style="flex: 1;">
+          <button class="nav-btn secondary" onclick="saveApiKey()" style="padding: 12px; width: auto; font-size: 0.9rem;">保存</button>
+        </div>
+        <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
+          ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
+        </div>
+      </div>
+
+      <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
+      <h3>🗑️ データ管理</h3>
+      <div class="filter-group">
+        <button class="nav-btn danger" onclick="resetHistory()">学習記録をリセットする</button>
+        <div style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted); line-height: 1.5;">
+          ※総解答数、正解数、各問題の正誤履歴がすべて消去されます。<br>
+          （設定したAPIキーやテーマカラーはそのまま保持されます）
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="screen-quiz" class="screen">
+    <div class="header">
+      <div>
+        <span id="cat-label" class="cat-label-badge">分野</span>
+        <span id="trend-label" class="trend-badge">🔥頻出度</span>
+      </div>
+      <span id="prog-label">問 1 / 1</span>
+    </div>
+
+    <div id="q-source" class="q-source-badge"></div>
+
+    <div id="ai-loading">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+      <div style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
+    </div>
+
+    <div class="question-box" id="q-text"></div>
+    <div id="q-image-container" style="display: none; text-align: center;"></div>
+    <div class="options" id="opt-box"></div>
+
+    <div class="explanation-box" id="exp-box">
+      <div class="result-status" id="res-status"></div>
+      <div id="exp-text"></div>
+      
+      <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
+      
+      <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(168,85,247,0.05); border-radius: 8px; border: 1px dashed rgba(168,85,247,0.3);">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+        <div style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
+      </div>
+      
+      <div id="ai-explain-result">
+        <div class="ai-exp-title">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+          AI詳細解説
+        </div>
+        <div id="ai-explain-text"></div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="nav-btn secondary" id="quit-btn" onclick="quitQuiz()">中断</button>
+      <button class="nav-btn" id="next-btn" disabled>回答を選択してください</button>
+    </div>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <h2>演習結果</h2>
+    
+    <div class="score-box">
+      <div style="color: var(--text-muted); font-weight: bold;">正答率</div>
+      <div class="score-number" id="score-text">0%</div>
+      <div id="score-detail" style="font-weight: bold; color: var(--text-muted); font-size: 1.1rem;">0 / 0 問 正解</div>
+    </div>
+    
+    <div class="history-filter">
+      <label><input type="radio" name="res-filter" value="all" checked onchange="renderHistoryUI()"><span>すべて表示</span></label>
+      <label><input type="radio" name="res-filter" value="wrong" onchange="renderHistoryUI()"><span>不正解のみ</span></label>
+    </div>
+
+    <div id="history-list" class="history-list">
+      <!-- 履歴がここに入る -->
+    </div>
+    
+    <button class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
+  </div>
+
+</div>
+
+<script>
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
+  const SHEET_NAME = "過去問マスターDB";
+
+  let allQuestions = [];
+  let masterYears = [];
+  let masterGenres = [];
+  let genreToSubgenres = {}; 
+  
+  let subgenreTrendScores = {}; 
+  let radarChartInstance = null;
+
+  let currentTargetQuestions = [];
+  let filteredQuestions = [];
+  let curIdx = 0;
+  let sessionAnswers = {}; 
+  let isAiMode = false; 
+
+  let userMemory = {
+    theme: 'light',
+    stats: { total: 0, correct: 0 },
+    history: {} 
+  };
+  
+  window.onload = async () => {
+    try {
+      await loadExcelData();
+      finishInit();
+    } catch (error) {
+      console.warn("自動読み込み失敗:", error);
+      document.getElementById('loading-content').style.display = 'none';
+      document.getElementById('upload-content').style.display = 'block';
+    }
+  };
+
+  function finishInit() {
+    loadUserData();
+    initApp();
+    applyTheme(); 
+    updateMemoryUI(); 
+    loadApiKey();
+    switchScreen('screen-start');
+  }
+
+  window.saveApiKey = function() {
+    const key = document.getElementById('api-key-input').value.trim();
+    if (key) {
+      localStorage.setItem('my_gemini_api_key', key);
+      const statusEl = document.getElementById('api-key-status');
+      statusEl.textContent = "✅ ブラウザに安全に保存しました！";
+      statusEl.style.color = "var(--success-text)";
+      setTimeout(() => {
+        statusEl.textContent = "※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。";
+        statusEl.style.color = "var(--text-muted)";
+      }, 3000);
+    } else {
+      alert("APIキーを入力してください。");
+    }
+  };
+
+  function loadApiKey() {
+    const savedKey = localStorage.getItem('my_gemini_api_key');
+    if (savedKey) {
+      document.getElementById('api-key-input').value = savedKey;
+    }
+  }
+
+  window.resetHistory = function() {
+    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
+      userMemory.stats = { total: 0, correct: 0 };
+      userMemory.history = {};
+      saveUserData();
+      updateMemoryUI(); 
+      updateFilterUI(); 
+      alert("学習記録をリセットしました。");
+    }
+  };
+
+  function loadUserData() {
+    try {
+      const savedData = localStorage.getItem('app_memory');
+      if (savedData) {
+        userMemory = JSON.parse(savedData);
+      }
+    } catch (e) {
+      console.error("メモリの読み込みエラー", e);
+    }
+  }
+
+  function saveUserData() {
+    try {
+      localStorage.setItem('app_memory', JSON.stringify(userMemory));
+    } catch (e) {
+      console.error("メモリの保存エラー", e);
+    }
+  }
+
+  function applyTheme() {
+    const btn = document.getElementById('theme-btn');
+    if (userMemory.theme === 'dark') {
+      document.body.setAttribute('data-theme', 'dark');
+      btn.textContent = '☀️';
+    } else {
+      document.body.removeAttribute('data-theme');
+      btn.textContent = '🌙';
+    }
+    updateChartsTheme();
+  }
+
+  window.toggleTheme = function() {
+    userMemory.theme = userMemory.theme === 'dark' ? 'light' : 'dark';
+    applyTheme();
+    saveUserData(); 
+  };
+
+  function getChartColors() {
+    const isDarkMode = userMemory.theme === 'dark';
+    return {
+      textColor: isDarkMode ? '#94a3b8' : '#64748b',
+      gridColor: isDarkMode ? '#334155' : '#e2e8f0',
+      bgColor: isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(67, 56, 202, 0.2)',
+      borderColor: isDarkMode ? '#818cf8' : '#4338ca'
+    };
+  }
+
+  function drawRadarChart() {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    const genreStats = {};
+    masterGenres.forEach(g => {
+        genreStats[g] = { total: 0, correct: 0 };
+    });
+
+    allQuestions.forEach(q => {
+        if (q.genre && userMemory.history[q.id]) {
+            const h = userMemory.history[q.id];
+            genreStats[q.genre].total += (h.c + h.w);
+            genreStats[q.genre].correct += h.c;
+        }
+    });
+
+    const labels = [];
+    const data = [];
+
+    masterGenres.forEach(g => {
+        let shortName = g;
+        if(g.length > 8) shortName = g.substring(0, 8) + '...';
+        labels.push(shortName);
+
+        const stats = genreStats[g];
+        if (stats.total > 0) {
+            data.push(Math.round((stats.correct / stats.total) * 100));
+        } else {
+            data.push(0); 
+        }
+    });
+
+    const colors = getChartColors();
+
+    if (radarChartInstance) {
+        radarChartInstance.destroy();
+    }
+
+    radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '分野別正答率 (%)',
+                data: data,
+                backgroundColor: colors.bgColor,
+                borderColor: colors.borderColor,
+                pointBackgroundColor: colors.borderColor,
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: colors.borderColor,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: colors.gridColor },
+                    grid: { color: colors.gridColor },
+                    pointLabels: {
+                        color: colors.textColor,
+                        font: { size: 10, family: "'Inter', sans-serif" }
+                    },
+                    ticks: {
+                        color: colors.textColor,
+                        backdropColor: 'transparent',
+                        stepSize: 25,
+                        min: 0,
+                        max: 100,
+                        display: false 
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` 正答率: ${context.parsed.r}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+  }
+
+  function updateChartsTheme() {
+      if (radarChartInstance) {
+          drawRadarChart(); 
+      }
+  }
+
+  function updateMemoryUI() {
+    const s = userMemory.stats;
+    document.getElementById('ms-total').textContent = s.total;
+    document.getElementById('ms-correct').textContent = s.correct;
+    const rate = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
+    document.getElementById('ms-rate').textContent = `${rate}%`;
+    
+    if (masterGenres && masterGenres.length > 0) {
+        drawRadarChart();
+    }
+  }
+
+  async function loadExcelData() {
+    // キャッシュを回避するためにクエリパラメータを付与してリクエスト
+    const timestamp = new Date().getTime();
+    const response = await fetch(`${EXCEL_FILE_NAME}?t=${timestamp}`);
+    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    const arrayBuffer = await response.arrayBuffer();
+    processExcelArrayBuffer(arrayBuffer);
+  }
+
+  window.handleManualUpload = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        processExcelArrayBuffer(e.target.result);
+        finishInit();
+      } catch (error) {
+        alert("エクセルの解析に失敗しました: " + error.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  function processExcelArrayBuffer(arrayBuffer) {
+    const workbook = XLSX.read(arrayBuffer, {type: "array"});
+    const worksheet = workbook.Sheets[SHEET_NAME];
+    
+    if (!worksheet) throw new Error(`シート「${SHEET_NAME}」が見つかりません。`);
+    
+    const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+
+    allQuestions = data.map((row, index) => {
+      let yearStr = String(row['年度'] || '').trim();
+      let yearNum = 0;
+      const rMatch = yearStr.match(/令和([0-9元]+)/);
+      if (rMatch) {
+          yearNum = rMatch[1] === '元' ? 1 : parseInt(rMatch[1]);
+          yearNum += 2018; 
+      } else {
+          const hMatch = yearStr.match(/平成([0-9]+)/);
+          if (hMatch) {
+              yearNum = parseInt(hMatch[1]) + 1988; 
+          } else {
+              const numMatch = yearStr.match(/[0-9]{4}/);
+              if(numMatch) yearNum = parseInt(numMatch[0]);
+          }
+      }
+
+      const block = String(row['大分類(ブロック)'] || '').trim();
+      const sub = String(row['サブジャンル'] || '').trim();
+      const qNumStr = String(row['設問番号'] || `Q${index+1}`).trim();
+      
+      const options = [];
+      for(let i=1; i<=5; i++){
+        const key = `選択肢${String.fromCharCode(0x2460 + i - 1)}`;
+        const opt = String(row[key] || '').trim();
+        if(opt) options.push(opt);
+      }
+      
+      let rawAns = String(row['公式正答'] || '').trim();
+      rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+      
+      let ansIdx = 0;
+      const ansMatch = rawAns.match(/\d+/);
+      if (ansMatch) {
+          ansIdx = parseInt(ansMatch[0], 10) - 1;
+      }
+      
+      const theme = String(row['問題のテーマ・内容概要'] || '').trim();
+      const exp = theme ? `【テーマ・内容概要】\n${theme}` : "【解説】\n詳細な解説はありません。";
+      
+      const imgName = String(row['画像ファイル名'] || row['画像URL'] || '').trim();
+      
+      return {
+        id: `${yearStr}_${qNumStr}`, 
+        year: yearStr,
+        yearNum: yearNum,
+        qNum: qNumStr,
+        genre: block,
+        subgenre: sub,
+        question: String(row['問題文'] || '').trim(),
+        options: options,
+        answer: ansIdx,
+        explanation: exp,
+        imageUrl: imgName 
+      };
+    }).filter(q => q.question !== "");
+  }
+
+  function getYearWeight(diff) {
+      if (diff === 0) return 10;
+      if (diff === 1) return 7;
+      if (diff === 2) return 5;
+      if (diff === 3) return 3;
+      if (diff === 4) return 2;
+      return 1;
+  }
+
+  function initApp() {
+    const ySet = new Set();
+    const gSet = new Set();
+    const subgenreYears = {};
+
+    allQuestions.forEach(q => {
+      if(q.year) ySet.add(q.year);
+      if(q.genre) {
+        gSet.add(q.genre);
+        if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set();
+        if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre);
+      }
+      if(q.subgenre && q.yearNum > 0) {
+          if(!subgenreYears[q.subgenre]) subgenreYears[q.subgenre] = [];
+          subgenreYears[q.subgenre].push(q.yearNum);
+      }
+    });
+
+    let maxYearNum = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
+    let rawScores = {};
+    
+    Object.keys(subgenreYears).forEach(sub => {
+        let score = 0;
+        subgenreYears[sub].forEach(y => {
+            let diff = maxYearNum - y;
+            score += getYearWeight(diff); 
+        });
+        rawScores[sub] = score;
+    });
+
+    let maxRawScore = Math.max(...Object.values(rawScores));
+    if (maxRawScore === 0) maxRawScore = 1;
+
+    Object.keys(rawScores).forEach(sub => {
+        let score = rawScores[sub];
+        let ratio = score / maxRawScore;
+        
+        let level = 1;
+        if (ratio >= 0.8) level = 5;
+        else if (ratio >= 0.6) level = 4;
+        else if (ratio >= 0.4) level = 3;
+        else if (ratio >= 0.2) level = 2;
+        
+        subgenreTrendScores[sub] = { raw: score, level: level };
+    });
+
+    const sortedQuestionsByYear = [...allQuestions].sort((a, b) => b.yearNum - a.yearNum);
+    masterYears = Array.from(new Set(sortedQuestionsByYear.map(q => q.year))).filter(y => y);
+    masterGenres = Array.from(gSet).sort();
+
+    buildInitialFilterSelects();
+    updateFilterUI();
+  }
+
+  function buildInitialFilterSelects() {
+    const ySelect = document.getElementById('year-filter');
+    ySelect.innerHTML = '<option value="all">すべての年度</option>';
+    masterYears.forEach(y => ySelect.add(new Option(y, y)));
+
+    const gSelect = document.getElementById('genre-filter');
+    gSelect.innerHTML = '<option value="all">すべての大分類</option>';
+    masterGenres.forEach(g => gSelect.add(new Option(g, g)));
+  }
+
+  window.updateFilterUI = function() {
+    const ySelect = document.getElementById('year-filter');
+    const gSelect = document.getElementById('genre-filter');
+    const sSelect = document.getElementById('subgenre-filter');
+    const mSelect = document.getElementById('memory-filter');
+    
+    const currentYear = ySelect.value;
+    const currentGenre = gSelect.value;
+    let currentSubgenre = sSelect.value || 'all'; 
+    const currentMemory = mSelect.value;
+    const currentKeyword = document.getElementById('keyword-filter').value.toLowerCase().trim();
+
+    sSelect.innerHTML = '<option value="all">すべての小分類</option>';
+    let availableSubgenres = new Set();
+    if (currentGenre === 'all') {
+      Object.values(genreToSubgenres).forEach(set => set.forEach(s => availableSubgenres.add(s)));
+    } else {
+      availableSubgenres = genreToSubgenres[currentGenre] || new Set();
+    }
+    Array.from(availableSubgenres).sort().forEach(s => sSelect.add(new Option(s, s)));
+    
+    if (Array.from(availableSubgenres).includes(currentSubgenre)) {
+      sSelect.value = currentSubgenre;
+    } else {
+      sSelect.value = 'all'; currentSubgenre = 'all';
+    }
+
+    const fKw = (q) => currentKeyword === '' || 
+                       q.question.toLowerCase().includes(currentKeyword) || 
+                       q.explanation.toLowerCase().includes(currentKeyword) || 
+                       q.options.some(o => o.toLowerCase().includes(currentKeyword));
+    const fY = (q, y) => y === 'all' || q.year === y;
+    const fG = (q, g) => g === 'all' || q.genre === g;
+    const fS = (q, s) => s === 'all' || q.subgenre === s;
+    
+    const fMem = (q) => {
+      if (currentMemory === 'all') return true;
+      const h = userMemory.history[q.id];
+      if (currentMemory === 'unanswered') return !h || (h.c === 0 && h.w === 0);
+      if (currentMemory === 'wrong') return h && h.w > 0;
+      if (currentMemory === 'perfect') return h && h.c > 0 && h.w === 0;
+      return true;
+    };
+
+    const baseForY = allQuestions.filter(q => fG(q, currentGenre) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
+    const countsY = {}; baseForY.forEach(q => { countsY[q.year] = (countsY[q.year] || 0) + 1; });
+    ySelect.options[0].text = `すべての年度 (${baseForY.length}問)`;
+    for (let i = 1; i < ySelect.options.length; i++) {
+      const val = ySelect.options[i].value; const c = countsY[val] || 0;
+      ySelect.options[i].text = `${val} (${c}問)`; ySelect.options[i].disabled = (c === 0);
+    }
+
+    const baseForG = allQuestions.filter(q => fY(q, currentYear) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
+    const countsG = {}; baseForG.forEach(q => { countsG[q.genre] = (countsG[q.genre] || 0) + 1; });
+    gSelect.options[0].text = `すべての大分類 (${baseForG.length}問)`;
+    for (let i = 1; i < gSelect.options.length; i++) {
+      const val = gSelect.options[i].value; const c = countsG[val] || 0;
+      gSelect.options[i].text = `${val} (${c}問)`; gSelect.options[i].disabled = (c === 0);
+    }
+
+    const baseForS = allQuestions.filter(q => fY(q, currentYear) && fG(q, currentGenre) && fKw(q) && fMem(q));
+    const countsS = {}; baseForS.forEach(q => { countsS[q.subgenre] = (countsS[q.subgenre] || 0) + 1; });
+    sSelect.options[0].text = `すべての小分類 (${baseForS.length}問)`;
+    for (let i = 1; i < sSelect.options.length; i++) {
+      const val = sSelect.options[i].value; const c = countsS[val] || 0;
+      sSelect.options[i].text = `${val} (${c}問)`; sSelect.options[i].disabled = (c === 0);
+    }
+
+    currentTargetQuestions = allQuestions.filter(q => fY(q, currentYear) && fG(q, currentGenre) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
+    
+    const countEl = document.getElementById('target-count');
+    const startBtn = document.getElementById('start-btn');
+    
+    if (currentTargetQuestions.length === 0) {
+      countEl.textContent = '条件に一致する問題がありません';
+      countEl.style.background = 'var(--danger-bg)';
+      countEl.style.color = 'var(--danger-text)';
+      startBtn.disabled = true;
+      startBtn.textContent = '対象問題がありません';
+    } else {
+      countEl.textContent = `出題対象: ${currentTargetQuestions.length} 問`;
+      countEl.style.background = 'var(--info-bg)';
+      countEl.style.color = 'var(--primary)';
+      startBtn.disabled = false;
+      startBtn.textContent = '過去問演習を開始する';
+    }
+  };
+
+  function getWeightedRandomQuestions(pool, count) {
+    if (count >= pool.length) return shuffleArray([...pool]);
+
+    let weightedPool = pool.map(q => {
+      let scoreObj = subgenreTrendScores[q.subgenre];
+      let weight = scoreObj ? scoreObj.raw : 1;
+      return { q: q, weight: weight };
+    });
+
+    let selected = [];
+    for (let i = 0; i < count; i++) {
+      let totalWeight = weightedPool.reduce((sum, item) => sum + item.weight, 0);
+      let randomVal = Math.random() * totalWeight;
+      let currentWeight = 0;
+      
+      for (let j = 0; j < weightedPool.length; j++) {
+        currentWeight += weightedPool[j].weight;
+        if (randomVal <= currentWeight) {
+          selected.push(weightedPool[j].q);
+          weightedPool.splice(j, 1); 
+          break;
+        }
+      }
+    }
+    return selected;
+  }
+
+  function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  function switchScreen(screenId) {
+    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
+    document.getElementById(screenId).classList.add('active');
+  }
+
+  window.startQuiz = function() {
+    if (currentTargetQuestions.length === 0) return;
+    isAiMode = false;
+    let questionsPool = [...currentTargetQuestions];
+    const orderType = document.getElementById('order-filter').value;
+    const selectedCountStr = document.getElementById('count-filter').value;
+    const selectedCount = selectedCountStr === 'all' ? questionsPool.length : parseInt(selectedCountStr, 10);
+    
+    if (orderType === 'trend') {
+      filteredQuestions = getWeightedRandomQuestions(questionsPool, selectedCount);
+    } else if (orderType === 'random') {
+      shuffleArray(questionsPool);
+      filteredQuestions = questionsPool.slice(0, selectedCount);
+    } else {
+      filteredQuestions = questionsPool.slice(0, selectedCount);
+    }
+
+    sessionAnswers = {};
+    curIdx = 0;
+    
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('q-text').style.display = 'block';
+    document.getElementById('opt-box').style.display = 'flex';
+    document.getElementById('q-source').style.display = 'inline-flex';
+    
+    switchScreen('screen-quiz');
+    renderQuestion();
+  };
+
+  window.startAIQuiz = async function() {
+    const savedKey = localStorage.getItem('my_gemini_api_key');
+    if (!savedKey) {
+      alert("AIモードを使用するには、スタート画面の下部にある設定エリアに「Gemini APIキー」を入力して保存してください。");
+      document.getElementById('api-key-input').focus();
+      return;
+    }
+
+    isAiMode = true;
+    sessionAnswers = {};
+    filteredQuestions = [];
+    curIdx = 0;
+    
+    switchScreen('screen-quiz');
+    await generateAIQuestionsBatch();
+  }
+
+  async function generateAIQuestionsBatch(useLiteModel = false) {
+    document.getElementById('q-text').style.display = 'none';
+    document.getElementById('q-image-container').style.display = 'none';
+    document.getElementById('opt-box').style.display = 'none';
+    document.getElementById('q-source').style.display = 'none';
+    document.getElementById('ai-loading').style.display = 'block';
+    document.getElementById('exp-box').classList.remove('show');
+    document.getElementById('next-btn').disabled = true;
+    document.getElementById("quit-btn").textContent = "終了して結果を見る";
+    
+    const genre = document.getElementById('genre-filter').value;
+    const subgenre = document.getElementById('subgenre-filter').value;
+    
+    const apiKey = localStorage.getItem('my_gemini_api_key');
+    
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    let topicHint = "衛生工学全般";
+    if (genre && genre !== "all") {
+        topicHint = `衛生工学部門の「${genre}」分野全般`;
+        if (subgenre && subgenre !== "all") {
+            topicHint += `（特に「${subgenre}」にフォーカス）`;
+        }
+    }
+
+    let targetForRef = (genre === "all") ? allQuestions : currentTargetQuestions;
+    let refQuestions = targetForRef.map(q => q.question);
+    if (refQuestions.length > 150) {
+        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 150);
+    }
+    const refText = refQuestions.map(q => `・${q}`).join('\n');
+
+    const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
+以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「5問」生成してください。
+
+【テーマ】
+${topicHint}
+
+【過去の出題例（参考）】
+${refText}
+
+【指示】
+・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
+・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
+
+必ず以下のJSONフォーマットで、Markdown装飾を含めず、純粋なJSON文字列のみを出力してください。
+{
+  "questions": [
+    {
+      "question": "問題文",
+      "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
+      "answer": 0,
+      "explanation": "解説"
+    }
+  ]
+}`;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }]
+    };
+
+    try {
+      const response = await fetch(apiUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        if (response.status === 429 && !useLiteModel) {
+            console.warn("APIの利用制限(429)に到達。Liteモデルで再試行します...");
+            return generateAIQuestionsBatch(true);
+        }
+        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
+      }
+
+      if (result.candidates && result.candidates[0].content.parts[0].text) {
+        let textData = result.candidates[0].content.parts[0].text;
+        textData = textData.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+
+        const data = JSON.parse(textData);
+        if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
+        
+        const startIndex = filteredQuestions.length;
+        data.questions.forEach((qData, idx) => {
+            filteredQuestions.push({
+              id: "AI-" + Date.now() + "-" + idx,
+              year: "AI生成予想",
+              qNum: `Q${idx+1}`,
+              genre: genre !== "all" ? genre : "AI総合",
+              subgenre: subgenre !== "all" ? subgenre : "網羅的",
+              question: qData.question,
+              options: qData.options,
+              answer: qData.answer,
+              explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`,
+              imageUrl: "" 
+            });
+        });
+
+        document.getElementById('ai-loading').style.display = 'none';
+        document.getElementById('q-text').style.display = 'block';
+        document.getElementById('opt-box').style.display = 'flex';
+        document.getElementById('q-source').style.display = 'inline-flex';
+        
+        curIdx = startIndex;
+        renderQuestion();
+      }
+    } catch(e) {
+      console.error("AI問題生成エラー", e);
+      alert(`AI問題の生成に失敗しました。\n\n【詳細】\n${e.message}`);
+      window.goToStart();
+    }
+  }
+
+  function renderQuestion() {
+    const q = filteredQuestions[curIdx];
+    
+    document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
+    document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
+    document.getElementById('q-text').textContent = q.question;
+    
+    const sourceEl = document.getElementById('q-source');
+    if (isAiMode) {
+      sourceEl.innerHTML = '✨ AIオリジナル予想問題';
+      sourceEl.style.color = '#a855f7';
+      sourceEl.style.borderColor = 'rgba(168, 85, 247, 0.3)';
+      sourceEl.style.background = 'rgba(168, 85, 247, 0.05)';
+    } else {
+      sourceEl.innerHTML = `📖 出典: ${q.year} ${q.qNum}`;
+      sourceEl.style.color = 'var(--text-muted)';
+      sourceEl.style.borderColor = 'var(--border)';
+      sourceEl.style.background = 'var(--bg)';
+    }
+
+    const trendLabel = document.getElementById('trend-label');
+    if (!isAiMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
+        const lv = subgenreTrendScores[q.subgenre].level;
+        const stars = '★'.repeat(lv) + '☆'.repeat(5 - lv);
+        trendLabel.textContent = `頻出度 ${stars}`;
+        
+        trendLabel.className = 'trend-badge'; 
+        trendLabel.classList.add(`trend-lv${lv}`);
+        trendLabel.style.display = "inline-block";
+    } else {
+        trendLabel.style.display = "none";
+    }
+
+    const imgContainer = document.getElementById("q-image-container");
+    if (q.imageUrl) {
+        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="問題図" onerror="this.style.display='none';">`;
+        imgContainer.style.display = "block";
+    } else {
+        imgContainer.innerHTML = "";
+        imgContainer.style.display = "none";
+    }
+
+    const optBox = document.getElementById('opt-box');
+    optBox.innerHTML = ''; 
+    
+    const hasAnswered = sessionAnswers.hasOwnProperty(q.id);
+
+    q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `${idx + 1}. ${opt}`;
+        
+        if (hasAnswered) {
+          btn.disabled = true;
+          if (idx === q.answer) btn.classList.add("correct");
+          if (sessionAnswers[q.id] === idx && idx !== q.answer) btn.classList.add("wrong");
+        } else {
+          btn.onclick = () => selectOption(idx);
+        }
+        
+        optBox.appendChild(btn);
+    });
+
+    document.getElementById('exp-box').classList.remove('show');
+    document.getElementById('ai-explain-result').style.display = 'none';
+    document.getElementById('ai-explain-btn').style.display = 'none';
+    
+    const nextBtn = document.getElementById('next-btn');
+    
+    if (hasAnswered) {
+      const isCorrect = sessionAnswers[q.id] === q.answer;
+      const resStatus = document.getElementById('res-status');
+      resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
+      document.getElementById('exp-text').textContent = q.explanation;
+      document.getElementById('exp-box').classList.add('show');
+      
+      if (!isAiMode) {
+        document.getElementById('ai-explain-btn').style.display = 'block';
+      }
+      
+      nextBtn.disabled = false;
+      if (isAiMode && curIdx === filteredQuestions.length - 1) {
+          nextBtn.textContent = '次のAI予想問題へ';
+          nextBtn.onclick = () => generateAIQuestionsBatch();
+      } else if (curIdx === filteredQuestions.length - 1) {
+          nextBtn.textContent = '結果を見る';
+          nextBtn.onclick = showResults;
+      } else {
+          nextBtn.textContent = '次の問題へ';
+          nextBtn.onclick = goNext;
+      }
+    } else {
+      nextBtn.disabled = true;
+      nextBtn.textContent = '回答を選択してください';
+      nextBtn.onclick = null;
+    }
+  }
+
+  window.selectOption = function(selectedIdx) {
+    const q = filteredQuestions[curIdx];
+    if(sessionAnswers.hasOwnProperty(q.id)) return;
+    
+    sessionAnswers[q.id] = selectedIdx; 
+    
+    if (!isAiMode) {
+      if (!userMemory.history[q.id]) {
+        userMemory.history[q.id] = { c: 0, w: 0 };
+      }
+      
+      const isCorrect = selectedIdx === q.answer;
+      if (isCorrect) {
+          userMemory.history[q.id].c++;
+          userMemory.history[q.id].w = 0; 
+      } else {
+          userMemory.history[q.id].w++;
+      }
+      
+      userMemory.stats.total++;
+      if (isCorrect) userMemory.stats.correct++;
+      saveUserData();
+    }
+
+    renderQuestion(); 
+  }
+
+  window.askAIExplain = async function(useLiteModel = false) {
+    const apiKey = localStorage.getItem('my_gemini_api_key');
+    if (!apiKey) {
+      alert("AI解説機能を使用するには、スタート画面の設定エリアに「Gemini APIキー」を入力して保存してください。");
+      return;
+    }
+
+    const q = filteredQuestions[curIdx];
+    const btn = document.getElementById("ai-explain-btn");
+    const loading = document.getElementById("ai-explain-loading");
+    const resultBox = document.getElementById("ai-explain-result");
+    const resultText = document.getElementById("ai-explain-text");
+
+    btn.style.display = "none";
+    loading.style.display = "block";
+    
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+    const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
+以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを詳細に解説してください。
+
+【問題文】
+${q.question}
+
+【選択肢】
+${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
+
+【正解】
+選択肢 ${q.answer + 1}
+
+※マークダウン記法（**や#）は使用せず、普通のテキストで見やすく書いてください。`;
+
+    const payload = {
+      contents: [{ parts: [{ text: prompt }] }]
+    };
+
+    try {
+      const response = await fetch(apiUrl, { 
+        method: 'POST', 
+        headers: { 'Content-Type': 'application/json' }, 
+        body: JSON.stringify(payload) 
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        if (response.status === 429 && !useLiteModel) {
+            console.warn("APIの利用制限(429)に到達。Liteモデルで解説を生成します...");
+            return askAIExplain(true); 
+        }
+        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
+      }
+
+      if (result.candidates && result.candidates[0].content.parts[0].text) {
+        let aiText = result.candidates[0].content.parts[0].text;
+        
+        loading.style.display = "none";
+        resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
+        resultBox.style.display = "block";
+      }
+    } catch(e) {
+      console.error("AI解説生成エラー", e);
+      loading.style.display = "none";
+      btn.style.display = "block";
+      alert(`AI解説の生成に失敗しました。\n\n【詳細】\n${e.message}`);
+    }
+  }
+
+  window.goNext = function() {
+    if (curIdx < filteredQuestions.length - 1) {
+        curIdx++; renderQuestion(); window.scrollTo(0, 0);
+    }
+  }
+
+  window.quitQuiz = function() {
+    if (isAiMode) {
+        if(confirm("AI網羅特訓を終了して結果を見ますか？")) {
+            window.showResults();
+        }
+    } else {
+        if(confirm("演習を中断して設定画面に戻りますか？\n（現在までの進捗は保存されません）")) {
+            window.goToStart();
+        }
+    }
+  }
+
+  window.goToStart = function() {
+    updateMemoryUI(); 
+    switchScreen('screen-start');
+    window.scrollTo(0, 0);
+  }
+
+  window.showResults = function() {
+    let correctCount = 0;
+    const questionsToEval = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
+    
+    questionsToEval.forEach(q => {
+      const isCorrect = sessionAnswers[q.id] === q.answer;
+      if (isCorrect) correctCount++;
+    });
+
+    const count = questionsToEval.length;
+    const rate = count > 0 ? Math.round((correctCount / count) * 100) : 0;
+    document.getElementById("score-text").textContent = `${rate}%`;
+    document.getElementById("score-detail").textContent = `${correctCount} / ${count} 問 正解`;
+
+    document.querySelector('input[name="res-filter"][value="all"]').checked = true;
+    window.renderHistoryUI(questionsToEval);
+
+    switchScreen('screen-result');
+    window.scrollTo(0, 0);
+  }
+
+  window.renderHistoryUI = function(questions = null) {
+    if (!questions) {
+        questions = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
+    }
+    
+    const historyList = document.getElementById("history-list");
+    historyList.innerHTML = "";
+    
+    const filterMode = document.querySelector('input[name="res-filter"]:checked').value;
+    let displayedCount = 0;
+
+    questions.forEach((q, index) => {
+      const userAnsIdx = sessionAnswers[q.id];
+      const isCorrect = userAnsIdx === q.answer;
+      
+      if (filterMode === 'wrong' && isCorrect) return;
+      displayedCount++;
+
+      const item = document.createElement("div");
+      item.className = `history-item ${isCorrect ? 'hi-correct' : 'hi-wrong'}`;
+      const userAnsText = userAnsIdx !== undefined ? q.options[userAnsIdx] : "未回答";
+      const correctAnsText = q.options[q.answer];
+
+      item.innerHTML = `
+        <div class="hi-header">
+          <span>問 ${index + 1} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
+          <span class="hi-mark">${isCorrect ? '〇 正解' : '× 不正解'}</span>
+        </div>
+        <div class="hi-q">${q.question}</div>
+        <div class="hi-ans">
+          <div class="ans-row">
+            <span class="ans-label">あなたの<br>回答:</span>
+            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'};">${userAnsText}</span>
+          </div>
+          ${!isCorrect ? `
+          <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
+            <span class="ans-label">正解:</span>
+            <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
+          </div>
+          ` : ''}
+        </div>
+      `;
+      historyList.appendChild(item);
+    });
+
+    if (displayedCount === 0) {
+      historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。<br>（すべて正解しました！）</div>`;
+    }
+  }
+</script>
+</body>
+</html>
