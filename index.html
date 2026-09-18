@@ -658,7 +658,9 @@
   }
 
   async function loadExcelData() {
-    const response = await fetch(EXCEL_FILE_NAME);
+    // キャッシュを回避するためにクエリパラメータを付与してリクエスト
+    const timestamp = new Date().getTime();
+    const response = await fetch(`${EXCEL_FILE_NAME}?t=${timestamp}`);
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
     const arrayBuffer = await response.arrayBuffer();
     processExcelArrayBuffer(arrayBuffer);

@@ -185,9 +185,10 @@
       
       allNotes = data.map(row => {
           const keys = Object.keys(row);
-          let genre = row['分類'] || row['大分類'] || row['ジャンル'] || (keys.length > 0 ? row[keys[0]] : '未分類');
-          let title = row['タイトル'] || row['項目'] || row['見出し'] || (keys.length > 1 ? row[keys[1]] : '無題');
-          let content = row['内容'] || row['詳細'] || row['解説'] || (keys.length > 2 ? row[keys[2]] : '');
+          // 値が数値の場合エラーになるのを防ぐため、強制的に文字列に変換する
+          let genre = String(row['分類'] || row['大分類'] || row['ジャンル'] || (keys.length > 0 ? row[keys[0]] : '未分類'));
+          let title = String(row['タイトル'] || row['項目'] || row['見出し'] || (keys.length > 1 ? row[keys[1]] : '無題'));
+          let content = String(row['内容'] || row['詳細'] || row['解説'] || (keys.length > 2 ? row[keys[2]] : ''));
           
           if(genre) genres.add(genre.trim());
           
