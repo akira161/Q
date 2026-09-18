@@ -7,6 +7,11 @@
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
+  <!-- KaTeX (数式レンダリング用) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
   <style>
     :root {
       --primary: #4338ca;
@@ -164,7 +169,7 @@
   let sheetDataMap = {}; 
   let currentSheetName = "";
   let currentGenres = new Set();
-  let sheetHeaders = {}; // 各シートの正しいヘッダー名を保持するオブジェクト
+  let sheetHeaders = {}; 
 
   window.onload = async () => {
     const timestamp = new Date().getTime();
@@ -205,16 +210,12 @@
           if (sheetName.includes("目次") || sheetName.includes("ガイド") || sheetName.includes("過去問テーマ")) return;
 
           const worksheet = workbook.Sheets[sheetName];
-          // header: 1 を指定して、二次元配列として読み込む
           const rawRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
           
           if (rawRows.length > 0) {
-              // 空行をスキップして、最も項目数が多い行（または最初に見つかった意味のある行）をヘッダーとして探す
               let headerIndex = -1;
               for (let i = 0; i < Math.min(5, rawRows.length); i++) {
-                  // その行の空ではないセルの数をカウント
                   const filledCells = rawRows[i].filter(cell => String(cell).trim() !== "").length;
-                  // 最低2列以上データが入っていればヘッダー行とみなす
                   if (filledCells >= 2) {
                       headerIndex = i;
                       break;
@@ -225,16 +226,14 @@
                   const headers = rawRows[headerIndex];
                   const dataRows = rawRows.slice(headerIndex + 1);
                   
-                  // ヘッダー名が重複していたり空だったりする場合の処理
                   const cleanHeaders = headers.map((h, index) => {
                       let strH = String(h).trim();
-                      if (strH === "") return `項目 ${index + 1}`; // 空なら「項目 1」などとする
+                      if (strH === "") return `項目 ${index + 1}`; 
                       return strH;
                   });
 
                   sheetHeaders[sheetName] = cleanHeaders;
 
-                  // オブジェクトの配列に再変換
                   const formattedData = dataRows.map(row => {
                       let obj = {};
                       cleanHeaders.forEach((header, index) => {
@@ -243,7 +242,6 @@
                       return obj;
                   });
                   
-                  // 全ての値が空の行を削除
                   const filteredData = formattedData.filter(row => {
                       return Object.values(row).some(val => val !== "");
                   });
@@ -328,7 +326,7 @@
       if (!rawData || rawData.length === 0 || headers.length === 0) return;
 
       let genreKey = headers.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野")) || headers[0];
-      let titleKey = headers.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ")) || (headers.length > 1 ? headers[1] : "");
+      let titleKey = headers.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ") || k.includes("公式名")) || (headers.length > 1 ? headers[1] : "");
 
       const filtered = rawData.filter(row => {
           let genreVal = genreKey ? row[genreKey] : '';
@@ -346,7 +344,6 @@
       }
 
       filtered.forEach((row, index) => {
-          // ゴミ行のスキップ (見出し・ジャンル以外の実データが一つもない場合)
           const dataValues = headers.filter(h => h !== genreKey && h !== titleKey).map(h => row[h]);
           const hasRealData = dataValues.some(v => v !== "");
           if(!hasRealData && headers.length > 2) return;
@@ -369,7 +366,6 @@
 
           headers.forEach(k => {
               const cellValue = row[k];
-              // 分類とタイトルに指定した列以外を表示する
               if (k !== genreKey && k !== titleKey && cellValue !== "") {
                   hasTableData = true;
                   tableHtml += `
@@ -385,6 +381,21 @@
           card.innerHTML = cardHtml + (hasTableData ? tableHtml : '');
           listContainer.appendChild(card);
       });
+
+      // 追加: KaTeXによる数式(LaTeX)の自動レンダリング
+      setTimeout(() => {
+          if (window.renderMathInElement) {
+              renderMathInElement(listContainer, {
+                  delimiters: [
+                      {left: '$$', right: '$$', display: true},
+                      {left: '$', right: '$', display: false},
+                      {left: '\\(', right: '\\)', display: false},
+                      {left: '\\[', right: '\\]', display: true}
+                  ],
+                  throwOnError: false
+              });
+          }
+      }, 50);
   }
 </script>
 </body>
