@@ -8,6 +8,7 @@
   <title>技術士 衛生工学 過去問演習</title>
   
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
     :root {
@@ -99,10 +100,11 @@
       padding: 16px; margin-bottom: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
     .ms-title { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
-    .ms-stats { display: flex; justify-content: space-around; text-align: center; }
+    .ms-stats { display: flex; justify-content: space-around; text-align: center; margin-bottom: 16px; }
     .ms-stats > div { display: flex; flex-direction: column; gap: 4px; }
     .ms-stats span { font-size: 0.75rem; color: var(--text-muted); font-weight: bold;}
     .ms-stats b { font-size: 1.3rem; color: var(--primary); font-weight: 800;}
+    .chart-container { position: relative; height: 250px; width: 100%; display: flex; justify-content: center; }
 
     .filter-grid { display: grid; gap: 16px; margin-bottom: 24px; }
     .filter-group label { display: block; font-size: 0.85rem; font-weight: bold; margin-bottom: 6px; color: var(--text-muted); }
@@ -141,7 +143,6 @@
     .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
     
-    /* 頻出度バッジのスタイル */
     .trend-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin-left: 8px; border: 1px solid; display: none; }
     .trend-lv5 { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
     .trend-lv4 { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
@@ -149,7 +150,6 @@
     .trend-lv2 { background: #f0fdf4; color: #15803d; border-color: #86efac; }
     .trend-lv1 { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
 
-    /* ダークモード時の頻出度バッジ */
     [data-theme="dark"] .trend-lv5 { background: rgba(185, 28, 28, 0.2); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
     [data-theme="dark"] .trend-lv4 { background: rgba(194, 65, 12, 0.2); color: #fdba74; border-color: rgba(251, 146, 60, 0.4); }
     [data-theme="dark"] .trend-lv3 { background: rgba(133, 77, 14, 0.2); color: #fde047; border-color: rgba(250, 204, 21, 0.4); }
@@ -252,6 +252,9 @@
         <div><span>総解答数</span><b id="ms-total">0</b></div>
         <div><span>正解数</span><b id="ms-correct">0</b></div>
         <div><span>通算正答率</span><b id="ms-rate">0%</b></div>
+      </div>
+      <div class="chart-container">
+        <canvas id="radarChart"></canvas>
       </div>
     </div>
     
@@ -418,7 +421,8 @@
   let masterGenres = [];
   let genreToSubgenres = {}; 
   
-  let subgenreTrendScores = {}; // レベル1〜5の評価用
+  let subgenreTrendScores = {}; 
+  let radarChartInstance = null;
 
   let currentTargetQuestions = [];
   let filteredQuestions = [];
@@ -514,6 +518,7 @@
       document.body.removeAttribute('data-theme');
       btn.textContent = '🌙';
     }
+    updateRadarChartTheme();
   }
 
   window.toggleTheme = function() {
@@ -522,12 +527,118 @@
     saveUserData(); 
   };
 
+  function drawRadarChart() {
+    const ctx = document.getElementById('radarChart').getContext('2d');
+    
+    // Calculate performance per genre
+    const genreStats = {};
+    masterGenres.forEach(g => {
+        genreStats[g] = { total: 0, correct: 0 };
+    });
+
+    allQuestions.forEach(q => {
+        if (q.genre && userMemory.history[q.id]) {
+            const h = userMemory.history[q.id];
+            genreStats[q.genre].total += (h.c + h.w);
+            genreStats[q.genre].correct += h.c;
+        }
+    });
+
+    const labels = [];
+    const data = [];
+
+    masterGenres.forEach(g => {
+        // Shorten long genre names for the chart
+        let shortName = g;
+        if(g.length > 8) shortName = g.substring(0, 8) + '...';
+        labels.push(shortName);
+
+        const stats = genreStats[g];
+        if (stats.total > 0) {
+            data.push(Math.round((stats.correct / stats.total) * 100));
+        } else {
+            data.push(0); // Default to 0% if no questions answered in this genre
+        }
+    });
+
+    const isDarkMode = userMemory.theme === 'dark';
+    const textColor = isDarkMode ? '#94a3b8' : '#64748b';
+    const gridColor = isDarkMode ? '#334155' : '#e2e8f0';
+    const bgColor = isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(67, 56, 202, 0.2)';
+    const borderColor = isDarkMode ? '#818cf8' : '#4338ca';
+
+    if (radarChartInstance) {
+        radarChartInstance.destroy();
+    }
+
+    radarChartInstance = new Chart(ctx, {
+        type: 'radar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: '分野別正答率 (%)',
+                data: data,
+                backgroundColor: bgColor,
+                borderColor: borderColor,
+                pointBackgroundColor: borderColor,
+                pointBorderColor: '#fff',
+                pointHoverBackgroundColor: '#fff',
+                pointHoverBorderColor: borderColor,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                r: {
+                    angleLines: { color: gridColor },
+                    grid: { color: gridColor },
+                    pointLabels: {
+                        color: textColor,
+                        font: { size: 10, family: "'Inter', sans-serif" }
+                    },
+                    ticks: {
+                        color: textColor,
+                        backdropColor: 'transparent',
+                        stepSize: 20,
+                        min: 0,
+                        max: 100,
+                        display: false // Hide numbers on the axis to reduce clutter
+                    }
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return ` 正答率: ${context.parsed.r}%`;
+                        }
+                    }
+                }
+            }
+        }
+    });
+  }
+
+  function updateRadarChartTheme() {
+      if (radarChartInstance) {
+          drawRadarChart(); // Redraw with new theme colors
+      }
+  }
+
   function updateMemoryUI() {
     const s = userMemory.stats;
     document.getElementById('ms-total').textContent = s.total;
     document.getElementById('ms-correct').textContent = s.correct;
     const rate = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
     document.getElementById('ms-rate').textContent = `${rate}%`;
+    
+    // Draw/Update Radar Chart when memory updates
+    if (masterGenres && masterGenres.length > 0) {
+        drawRadarChart();
+    }
   }
 
   async function loadExcelData() {
@@ -588,12 +699,9 @@
         if(opt) options.push(opt);
       }
       
-      // 堅牢な正解インデックスの抽出処理
       let rawAns = String(row['公式正答'] || '').trim();
-      // 全角数字を半角に変換
       rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
       let ansIdx = 0;
-      // 数字が含まれていればそれを正解とする
       const ansMatch = rawAns.match(/[1-5]/);
       if (ansMatch) {
           ansIdx = parseInt(ansMatch[0]) - 1;
@@ -619,14 +727,13 @@
     }).filter(q => q.question !== "");
   }
 
-  // 年度の新しさに応じた重みポイントを返す関数
   function getYearWeight(diff) {
-      if (diff === 0) return 10; // 最新年
-      if (diff === 1) return 7;  // 1年前
-      if (diff === 2) return 5;  // 2年前
-      if (diff === 3) return 3;  // 3年前
-      if (diff === 4) return 2;  // 4年前
-      return 1;                  // 5年以上前
+      if (diff === 0) return 10;
+      if (diff === 1) return 7;
+      if (diff === 2) return 5;
+      if (diff === 3) return 3;
+      if (diff === 4) return 2;
+      return 1;
   }
 
   function initApp() {
@@ -641,14 +748,12 @@
         if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set();
         if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre);
       }
-      // サブジャンルごとの出題年度を記録
       if(q.subgenre && q.yearNum > 0) {
           if(!subgenreYears[q.subgenre]) subgenreYears[q.subgenre] = [];
           subgenreYears[q.subgenre].push(q.yearNum);
       }
     });
 
-    // --- 頻出度（レベル1〜5）の独自計算ロジック ---
     let maxYearNum = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
     let rawScores = {};
     
@@ -656,18 +761,17 @@
         let score = 0;
         subgenreYears[sub].forEach(y => {
             let diff = maxYearNum - y;
-            score += getYearWeight(diff); // 最近出た問題ほど高得点
+            score += getYearWeight(diff); 
         });
         rawScores[sub] = score;
     });
 
-    // スコアの最大値を基準に、1〜5のレベルに分類する
     let maxRawScore = Math.max(...Object.values(rawScores));
     if (maxRawScore === 0) maxRawScore = 1;
 
     Object.keys(rawScores).forEach(sub => {
         let score = rawScores[sub];
-        let ratio = score / maxRawScore; // 0.0 〜 1.0の割合
+        let ratio = score / maxRawScore;
         
         let level = 1;
         if (ratio >= 0.8) level = 5;
@@ -898,8 +1002,8 @@
 
     let targetForRef = (genre === "all") ? allQuestions : currentTargetQuestions;
     let refQuestions = targetForRef.map(q => q.question);
-    if (refQuestions.length > 100) {
-        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 100);
+    if (refQuestions.length > 150) {
+        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 150);
     }
     const refText = refQuestions.map(q => `・${q}`).join('\n');
 
@@ -943,7 +1047,7 @@ ${refText}
       
       if (!response.ok) {
         if (response.status === 429 && !useLiteModel) {
-            console.warn("APIの利用制限(429)に到達しました。Liteモデルに切り替えて再試行します...");
+            console.warn("APIの利用制限(429)に到達。Liteモデルで再試行します...");
             return generateAIQuestionsBatch(true);
         }
         throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
@@ -993,7 +1097,6 @@ ${refText}
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
     document.getElementById('q-text').textContent = q.question;
     
-    // 出典バッジの表示制御
     const sourceEl = document.getElementById('q-source');
     if (isAiMode) {
       sourceEl.innerHTML = '✨ AIオリジナル予想問題';
@@ -1008,7 +1111,6 @@ ${refText}
       sourceEl.style.background = 'var(--bg)';
     }
 
-    // 頻出度バッジ（レベル1〜5）の表示
     const trendLabel = document.getElementById('trend-label');
     if (!isAiMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
         const lv = subgenreTrendScores[q.subgenre].level;
@@ -1093,9 +1195,6 @@ ${refText}
     
     sessionAnswers[q.id] = selectedIdx; 
     
-    // "Wrong" answers filtering logic.
-    // If the answer is correct and the question is in the history with wrong answers,
-    // clear the wrong count so it doesn't appear in the "wrong" filter anymore.
     if (!isAiMode) {
       if (!userMemory.history[q.id]) {
         userMemory.history[q.id] = { c: 0, w: 0 };
@@ -1103,7 +1202,6 @@ ${refText}
       
       const isCorrect = selectedIdx === q.answer;
       if (isCorrect) {
-          // If correct, reset wrong count to 0 so it's removed from "wrong" filter pool.
           userMemory.history[q.id].w = 0; 
       }
     }
@@ -1218,7 +1316,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
           }
           if (isCorrect) {
             userMemory.history[q.id].c++;
-            // w = 0 is now handled in selectOption, but doing it here again is fine
             userMemory.history[q.id].w = 0;
           } else {
             userMemory.history[q.id].w++;
