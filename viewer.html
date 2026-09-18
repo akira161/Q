@@ -100,7 +100,6 @@
     .note-cat { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; background: var(--card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);}
     .note-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 8px; line-height: 1.4;}
     
-    /* テーブル形式での表示用スタイル */
     .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
     .data-table th, .data-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top;}
     .data-table th { background-color: var(--card); color: var(--text-muted); font-weight: bold; }
@@ -134,7 +133,6 @@
 
   <div id="main-content" style="display: none;">
       
-      <!-- シート切り替えタブ -->
       <div id="sheet-tabs" class="sheet-tabs">
           <!-- タブが動的に生成されます -->
       </div>
@@ -163,9 +161,10 @@
   } catch(e) {}
 
   const EXCEL_FILE = "matome.xlsx";
-  let sheetDataMap = {}; // シート名をキーとしたデータのマップ
+  let sheetDataMap = {}; 
   let currentSheetName = "";
   let currentGenres = new Set();
+  let sheetHeaders = {}; // 各シートの正しいヘッダー名を保持するオブジェクト
 
   window.onload = async () => {
     const timestamp = new Date().getTime();
@@ -199,19 +198,61 @@
   function processExcelData(arrayBuffer) {
       const workbook = XLSX.read(arrayBuffer, {type: "array"});
       sheetDataMap = {};
+      sheetHeaders = {};
       let firstValidSheet = "";
 
       workbook.SheetNames.forEach(sheetName => {
-          // 「目次」や「活用ガイド」が含まれるシートはスキップ
-          if (sheetName.includes("目次") || sheetName.includes("ガイド")) return;
+          if (sheetName.includes("目次") || sheetName.includes("ガイド") || sheetName.includes("過去問テーマ")) return;
 
           const worksheet = workbook.Sheets[sheetName];
-          // ヘッダー行を1行目とみなして読み込む（defval:""で空セルも取得）
-          const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+          // header: 1 を指定して、二次元配列として読み込む
+          const rawRows = XLSX.utils.sheet_to_json(worksheet, {header: 1, defval: ""});
           
-          if (data.length > 0) {
-              sheetDataMap[sheetName] = data;
-              if (!firstValidSheet) firstValidSheet = sheetName;
+          if (rawRows.length > 0) {
+              // 空行をスキップして、最も項目数が多い行（または最初に見つかった意味のある行）をヘッダーとして探す
+              let headerIndex = -1;
+              for (let i = 0; i < Math.min(5, rawRows.length); i++) {
+                  // その行の空ではないセルの数をカウント
+                  const filledCells = rawRows[i].filter(cell => String(cell).trim() !== "").length;
+                  // 最低2列以上データが入っていればヘッダー行とみなす
+                  if (filledCells >= 2) {
+                      headerIndex = i;
+                      break;
+                  }
+              }
+
+              if (headerIndex !== -1) {
+                  const headers = rawRows[headerIndex];
+                  const dataRows = rawRows.slice(headerIndex + 1);
+                  
+                  // ヘッダー名が重複していたり空だったりする場合の処理
+                  const cleanHeaders = headers.map((h, index) => {
+                      let strH = String(h).trim();
+                      if (strH === "") return `項目 ${index + 1}`; // 空なら「項目 1」などとする
+                      return strH;
+                  });
+
+                  sheetHeaders[sheetName] = cleanHeaders;
+
+                  // オブジェクトの配列に再変換
+                  const formattedData = dataRows.map(row => {
+                      let obj = {};
+                      cleanHeaders.forEach((header, index) => {
+                          obj[header] = String(row[index] || "").trim();
+                      });
+                      return obj;
+                  });
+                  
+                  // 全ての値が空の行を削除
+                  const filteredData = formattedData.filter(row => {
+                      return Object.values(row).some(val => val !== "");
+                  });
+
+                  if (filteredData.length > 0) {
+                      sheetDataMap[sheetName] = filteredData;
+                      if (!firstValidSheet) firstValidSheet = sheetName;
+                  }
+              }
           }
       });
 
@@ -227,13 +268,11 @@
       document.getElementById('loading').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
 
-      // タブの生成
       const tabsContainer = document.getElementById('sheet-tabs');
       tabsContainer.innerHTML = '';
       Object.keys(sheetDataMap).forEach(sheetName => {
           const tab = document.createElement('div');
           tab.className = `sheet-tab ${sheetName === initialSheet ? 'active' : ''}`;
-          // シート名の先頭の「②_」などを消してスッキリ表示
           tab.textContent = sheetName.replace(/^[①-⑨0-9]+_/, ''); 
           tab.onclick = () => switchSheet(sheetName);
           tabsContainer.appendChild(tab);
@@ -245,7 +284,6 @@
   function switchSheet(sheetName) {
       currentSheetName = sheetName;
       
-      // タブのアクティブ状態更新
       document.querySelectorAll('.sheet-tab').forEach(tab => {
           tab.classList.remove('active');
           if (tab.textContent === sheetName.replace(/^[①-⑨0-9]+_/, '')) {
@@ -253,19 +291,17 @@
           }
       });
 
-      // フィルターとデータの更新
       currentGenres = new Set();
       const rawData = sheetDataMap[sheetName];
+      const headers = sheetHeaders[sheetName] || [];
       
-      // データの構造を解析して、どの列を「分類」として扱うか決める
-      if (rawData.length > 0) {
-          const keys = Object.keys(rawData[0]);
-          let genreKey = keys.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野"));
-          if (!genreKey && keys.length > 0) genreKey = keys[0]; // 見つからなければ1列目
+      let genreKey = headers.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野"));
+      if (!genreKey && headers.length > 0) genreKey = headers[0];
 
+      if (rawData && rawData.length > 0) {
           rawData.forEach(row => {
-              if (genreKey && row[genreKey] && String(row[genreKey]).trim() !== "") {
-                  currentGenres.add(String(row[genreKey]).trim());
+              if (genreKey && row[genreKey] && row[genreKey] !== "") {
+                  currentGenres.add(row[genreKey]);
               }
           });
       }
@@ -288,21 +324,16 @@
       listContainer.innerHTML = '';
 
       const rawData = sheetDataMap[currentSheetName];
-      if (!rawData || rawData.length === 0) return;
+      const headers = sheetHeaders[currentSheetName] || [];
+      if (!rawData || rawData.length === 0 || headers.length === 0) return;
 
-      const keys = Object.keys(rawData[0]);
-      let genreKey = keys.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野")) || keys[0];
-      let titleKey = keys.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ")) || (keys.length > 1 ? keys[1] : "");
+      let genreKey = headers.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野")) || headers[0];
+      let titleKey = headers.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ")) || (headers.length > 1 ? headers[1] : "");
 
       const filtered = rawData.filter(row => {
-          // ゴミデータ（全くデータが入っていない行）を弾く
-          const hasData = keys.some(k => String(row[k]).trim() !== "");
-          if (!hasData) return false;
-
-          let genreVal = genreKey ? String(row[genreKey]).trim() : '';
+          let genreVal = genreKey ? row[genreKey] : '';
           const matchGenre = selectedGenre === 'all' || genreVal === selectedGenre;
           
-          // 行の全データを文字列結合してキーワード検索
           const rowText = Object.values(row).join(' ').toLowerCase();
           const matchKw = keyword === '' || rowText.includes(keyword);
           
@@ -315,15 +346,16 @@
       }
 
       filtered.forEach((row, index) => {
-          // 見出し等に使えそうな行はスキップ（例：値が1つしか入っていない行）
-          const filledValues = Object.values(row).filter(v => String(v).trim() !== "");
-          if (filledValues.length <= 1 && keys.length > 2) return;
+          // ゴミ行のスキップ (見出し・ジャンル以外の実データが一つもない場合)
+          const dataValues = headers.filter(h => h !== genreKey && h !== titleKey).map(h => row[h]);
+          const hasRealData = dataValues.some(v => v !== "");
+          if(!hasRealData && headers.length > 2) return;
 
           const card = document.createElement('div');
           card.className = 'note-card';
           
-          let genreVal = genreKey && row[genreKey] ? String(row[genreKey]).trim() : '未分類';
-          let titleVal = titleKey && row[titleKey] ? String(row[titleKey]).trim() : (genreVal !== '未分類' ? genreVal : `項目 ${index + 1}`);
+          let genreVal = genreKey && row[genreKey] ? row[genreKey] : '未分類';
+          let titleVal = titleKey && row[titleKey] ? row[titleKey] : (genreVal !== '未分類' ? genreVal : `項目 ${index + 1}`);
 
           let cardHtml = `
               <div class="note-header">
@@ -332,24 +364,17 @@
               <div class="note-title">${titleVal}</div>
           `;
 
-          // 残りのデータをテーブル形式で表示
           let tableHtml = '<table class="data-table"><tbody>';
           let hasTableData = false;
 
-          keys.forEach(k => {
-              // 分類やタイトルとして使った列以外で、値が空でないものを表示
-              // ※ `__EMPTY` で始まる列（見出しなし列）も、値があれば表示するよう変更
-              const cellValue = String(row[k]).trim();
-              
+          headers.forEach(k => {
+              const cellValue = row[k];
+              // 分類とタイトルに指定した列以外を表示する
               if (k !== genreKey && k !== titleKey && cellValue !== "") {
                   hasTableData = true;
-                  // 列名が __EMPTY から始まる場合は、単に「詳細」などとするか、非表示にする
-                  // 今回はデータの中身を見たいとのことなので、キー名を適当に割り当ててでも表示する
-                  let displayKey = k.startsWith("__EMPTY") ? "詳細/値" : k;
-                  
                   tableHtml += `
                       <tr>
-                          <th style="width: 35%;">${displayKey}</th>
+                          <th style="width: 35%;">${k}</th>
                           <td>${cellValue}</td>
                       </tr>
                   `;
