@@ -308,7 +308,7 @@
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
-    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 無限特訓モード (5問ずつ生成)</button>
+    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -323,7 +323,7 @@
         </div>
       </div>
       
-      <!-- データ管理用に追加 -->
+      <!-- データ管理（リセット機能）のセクション -->
       <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
       <h3>🗑️ データ管理</h3>
       <div class="filter-group">
@@ -841,7 +841,6 @@
     const subgenre = document.getElementById('subgenre-filter').value;
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
-    // Liteモデルにフォールバックする仕組み
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -901,7 +900,6 @@ ${refText}
       const result = await response.json();
       
       if (!response.ok) {
-        // トークン切れ等(429)の場合、Liteモデルで再試行
         if (response.status === 429 && !useLiteModel) {
             console.warn("Rate limit exceeded for 3.6-flash. Falling back to 3.5-flash-lite...");
             return generateAIQuestionsBatch(true); 
@@ -929,7 +927,6 @@ ${refText}
               question: qData.question,
               options: qData.options,
               answer: qData.answer,
-              // Liteで生成した場合は明記する
               explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`
             });
         });
