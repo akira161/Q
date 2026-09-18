@@ -295,7 +295,7 @@
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">演習を開始する</button>
-    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問)</button>
+    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -323,7 +323,7 @@
 
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが網羅的な予想問題を<br>5問まとめて生成しています...</div>
+      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが広範囲な予想問題を<br>5問まとめて生成しています...</div>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">しばらくお待ちください</div>
     </div>
 
@@ -754,7 +754,7 @@
     renderQuestion();
   };
 
-  // --- AI網羅特訓モード (5問一括生成) ---
+  // --- AI 5問一括生成モード ---
   window.startAIQuiz = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
     if (!savedKey) {
@@ -769,7 +769,7 @@
     curIdx = 0;
     
     switchScreen('screen-quiz');
-    await generateAIQuestionsBatch(); // 5問まとめて生成
+    await generateAIQuestionsBatch(); 
   };
 
   async function generateAIQuestionsBatch() {
@@ -784,11 +784,11 @@
     const subgenre = document.getElementById('subgenre-filter').value;
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
-    // 最新モデル gemini-3.6-flash を指定
+    // 最新モデル 3.6-flash を指定
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
     
     // 広範囲を網羅するための指示
-    let topicHint = "衛生工学全般に関する基礎知識から最新動向（カーボンニュートラル、DX、気候変動適応、水環境保全、資源循環、関連法規など）まで、幅広く網羅的に";
+    let topicHint = "衛生工学全般に関する基礎知識から最新動向（関連法規、技術トレンドなど）まで、幅広く網羅的に";
     if (genre && genre !== "all") {
         topicHint = `衛生工学部門の「${genre}」分野全般について基礎から応用まで幅広く網羅し`;
         if (subgenre && subgenre !== "all") {
@@ -799,9 +799,9 @@
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
 以下のテーマに関する、試験に出題されるレベルの専門知識を問う【五肢択一問題】を、異なる切り口で「5問」生成してください。
 テーマ: ${topicHint}
-問題は実用的で、技術士に求められる倫理観や課題解決能力を問う内容も含めて、出題範囲ができるだけ重複しないように網羅的に作成してください。
+問題は実用的で、出題範囲ができるだけ重複しないように幅広く作成してください。
 
-必ず以下のJSONスキーマに従って出力してください。
+必ず以下のJSONスキーマに「厳密に」従って出力してください。（Markdownのブロックなどは不要です。JSONテキストのみを出力してください）
 {
   "type": "object",
   "properties": {
@@ -814,7 +814,6 @@
           "options": {
             "type": "array",
             "items": { "type": "string" },
-            "description": "必ず5つの選択肢を含めること",
             "minItems": 5,
             "maxItems": 5
           },
@@ -822,7 +821,9 @@
           "explanation": { "type": "string", "description": "各選択肢がなぜ正しい/誤っているかの詳しい解説" }
         },
         "required": ["question", "options", "answer", "explanation"]
-      }
+      },
+      "minItems": 5,
+      "maxItems": 5
     }
   },
   "required": ["questions"]
@@ -831,7 +832,7 @@
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json" // 3.6-flash の仕様に沿ったJSON強制
+        responseMimeType: "application/json"
       }
     };
 
@@ -880,11 +881,10 @@
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n詳細:\nAPIキーが間違っているか、通信エラーが発生しました。\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
       window.goToStart();
     }
   }
-  // --- AI特訓モード関連おわり ---
 
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
@@ -940,7 +940,7 @@
       nextBtn.disabled = false;
       if (curIdx === filteredQuestions.length - 1) {
           if (isAiMode) {
-            nextBtn.textContent = "次の5問を生成する";
+            nextBtn.textContent = "次の5問を生成する (少し時間かかります)";
             nextBtn.onclick = async () => {
                 curIdx++; // インデックスを進めておく
                 await generateAIQuestionsBatch();
@@ -966,13 +966,13 @@
     if(sessionAnswers.hasOwnProperty(q.id)) return; 
     sessionAnswers[q.id] = idx;
     renderQuestion();
-  };
+  }
 
   window.goNext = function() {
     if (curIdx < filteredQuestions.length - 1) {
         curIdx++; renderQuestion(); window.scrollTo(0, 0);
     }
-  };
+  }
 
   window.quitQuiz = function() {
     if (isAiMode) {
@@ -984,13 +984,13 @@
             window.goToStart();
         }
     }
-  };
+  }
 
   window.goToStart = function() {
     updateMemoryUI(); 
     switchScreen('screen-start');
     window.scrollTo(0, 0);
-  };
+  }
 
   window.showResults = function() {
     let correctCount = 0;
@@ -1027,7 +1027,7 @@
 
     switchScreen('screen-result');
     window.scrollTo(0, 0);
-  };
+  }
 
   window.renderHistoryUI = function(questions = null) {
     if (!questions) {
@@ -1077,8 +1077,7 @@
     if (displayedCount === 0) {
       historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。<br>（すべて正解しました！）</div>`;
     }
-  };
-
+  }
 </script>
 </body>
 </html>
