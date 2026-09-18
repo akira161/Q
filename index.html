@@ -11,7 +11,6 @@
 
   <style>
     :root {
-      /* ライトテーマ (デフォルト) */
       --primary: #2563eb;
       --primary-hover: #1d4ed8;
       --bg: #f8fafc;
@@ -31,7 +30,6 @@
       --trend-text: #c2410c;
     }
     
-    /* ダークテーマの設定 */
     [data-theme="dark"] {
       --primary: #3b82f6;
       --primary-hover: #60a5fa;
@@ -297,7 +295,7 @@
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">演習を開始する</button>
-    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 無限特訓モード</button>
+    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問)</button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -325,8 +323,8 @@
 
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが最新動向から<br>予想問題を生成しています...</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">数秒お待ちください</div>
+      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが網羅的な予想問題を<br>5問まとめて生成しています...</div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">しばらくお待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
@@ -756,7 +754,7 @@
     renderQuestion();
   };
 
-  // --- AI無限特訓モード関連 ---
+  // --- AI網羅特訓モード (5問一括生成) ---
   window.startAIQuiz = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
     if (!savedKey) {
@@ -771,10 +769,10 @@
     curIdx = 0;
     
     switchScreen('screen-quiz');
-    await loadNextAIQuestion();
+    await generateAIQuestionsBatch(); // 5問まとめて生成
   };
 
-  async function loadNextAIQuestion() {
+  async function generateAIQuestionsBatch() {
     document.getElementById('q-text').style.display = 'none';
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
@@ -785,53 +783,55 @@
     const genre = document.getElementById('genre-filter').value;
     const subgenre = document.getElementById('subgenre-filter').value;
     
-    const newQ = await generateAIQuestion(genre, subgenre);
-    if (!newQ) {
-        window.goToStart();
-        return;
-    }
-    
-    filteredQuestions.push(newQ);
-    
-    document.getElementById('ai-loading').style.display = 'none';
-    document.getElementById('q-text').style.display = 'block';
-    document.getElementById('opt-box').style.display = 'flex';
-    
-    renderQuestion();
-  }
-
-  async function generateAIQuestion(genre, subgenre) {
     const apiKey = localStorage.getItem('my_gemini_api_key');
+    // 最新モデル gemini-3.6-flash を指定
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
     
-    // エンドポイントを gemini-3.6-flash に変更
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`; 
-    
-    let topicHint = "今年の試験に出題されそうな、衛生工学における最新の技術動向（カーボンニュートラル、DX、気候変動適応、水環境保全技術、資源循環、関連法規の改正など）";
+    // 広範囲を網羅するための指示
+    let topicHint = "衛生工学全般に関する基礎知識から最新動向（カーボンニュートラル、DX、気候変動適応、水環境保全、資源循環、関連法規など）まで、幅広く網羅的に";
     if (genre && genre !== "all") {
-        topicHint = `衛生工学部門の「${genre}」分野において、近年注目されている課題や最新の技術動向`;
+        topicHint = `衛生工学部門の「${genre}」分野全般について基礎から応用まで幅広く網羅し`;
         if (subgenre && subgenre !== "all") {
-            topicHint += `（特に「${subgenre}」に関連する高度な内容）`;
+            topicHint += `（特に「${subgenre}」の多角的な視点を含めて）`;
         }
     }
 
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下のテーマに関する、今年の試験に出題されそうな高度な専門知識を問う【五肢択一問題】を1問生成してください。
+以下のテーマに関する、試験に出題されるレベルの専門知識を問う【五肢択一問題】を、異なる切り口で「5問」生成してください。
 テーマ: ${topicHint}
-問題は実用的で、技術士に求められる倫理観や課題解決能力を問う内容を含めてください。
+問題は実用的で、技術士に求められる倫理観や課題解決能力を問う内容も含めて、出題範囲ができるだけ重複しないように網羅的に作成してください。
 
-必ず以下のJSONフォーマットのみで出力してください。Markdownのバッククォート(\`\`\`json)などは含めず、純粋なJSONテキストのみを返してください。
-
+必ず以下のJSONスキーマに従って出力してください。
 {
-  "question": "問題文（「〜について、最も不適切なものはどれか」等の形式）",
-  "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
-  "answer": 0,
-  "explanation": "各選択肢がなぜ正しい/誤っているかの詳しい解説"
+  "type": "object",
+  "properties": {
+    "questions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "question": { "type": "string", "description": "問題文（「〜について、最も不適切なものはどれか」等の形式）" },
+          "options": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "必ず5つの選択肢を含めること",
+            "minItems": 5,
+            "maxItems": 5
+          },
+          "answer": { "type": "integer", "description": "正解のインデックス番号(0〜4)" },
+          "explanation": { "type": "string", "description": "各選択肢がなぜ正しい/誤っているかの詳しい解説" }
+        },
+        "required": ["question", "options", "answer", "explanation"]
+      }
+    }
+  },
+  "required": ["questions"]
 }`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
       generationConfig: {
-        responseMimeType: "application/json"
+        responseMimeType: "application/json" // 3.6-flash の仕様に沿ったJSON強制
       }
     };
 
@@ -851,26 +851,40 @@
       if (result.candidates && result.candidates[0].content.parts[0].text) {
         const textData = result.candidates[0].content.parts[0].text;
         const data = JSON.parse(textData);
-        if(!data.options || data.options.length !== 5) throw new Error("AIが正しい形式の選択肢を生成しませんでした");
         
-        return {
-          id: "AI-" + Date.now(),
-          year: "AI予想(今年)",
-          genre: genre !== "all" ? genre : "AI総合",
-          subgenre: subgenre !== "all" ? subgenre : "最新トレンド",
-          question: data.question,
-          options: data.options,
-          answer: data.answer,
-          explanation: "【AIによる解説】\n" + data.explanation
-        };
+        if (!data.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
+            throw new Error("AIが正しい形式の配列を生成しませんでした");
+        }
+        
+        // 生成された5問を問題配列に追加
+        data.questions.forEach((qData, idx) => {
+            filteredQuestions.push({
+              id: "AI-" + Date.now() + "-" + idx,
+              year: "AI網羅予想",
+              genre: genre !== "all" ? genre : "AI総合",
+              subgenre: subgenre !== "all" ? subgenre : "網羅的",
+              question: qData.question,
+              options: qData.options,
+              answer: qData.answer,
+              explanation: "【AIによる解説】\n" + qData.explanation
+            });
+        });
+
+        document.getElementById('ai-loading').style.display = 'none';
+        document.getElementById('q-text').style.display = 'block';
+        document.getElementById('opt-box').style.display = 'flex';
+        
+        renderQuestion();
+      } else {
+          throw new Error("APIからの応答が空でした");
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n詳細:\nAPIキーが間違っているか、通信エラーが発生しました。`);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n詳細:\nAPIキーが間違っているか、通信エラーが発生しました。\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
+      window.goToStart();
     }
-    return null;
   }
-  // --- AI無限特訓モード関連おわり ---
+  // --- AI特訓モード関連おわり ---
 
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
@@ -882,7 +896,7 @@
     document.getElementById("trend-label").style.display = isTrending ? "inline-block" : "none";
 
     if (isAiMode) {
-        document.getElementById("prog-label").textContent = `問 ${curIdx + 1} (AI生成)`;
+        document.getElementById("prog-label").textContent = `問 ${curIdx + 1} / ${filteredQuestions.length} (AI生成)`;
         document.getElementById("quit-btn").textContent = "終了して結果を見る";
     } else {
         document.getElementById("prog-label").textContent = `問 ${curIdx + 1} / ${filteredQuestions.length} (${q.year})`;
@@ -924,17 +938,21 @@
       expBox.classList.add("show");
       
       nextBtn.disabled = false;
-      if (isAiMode) {
-          nextBtn.textContent = "次のAI予想問題へ";
-          nextBtn.onclick = window.goNext;
-      } else {
-          if (curIdx === filteredQuestions.length - 1) {
+      if (curIdx === filteredQuestions.length - 1) {
+          if (isAiMode) {
+            nextBtn.textContent = "次の5問を生成する";
+            nextBtn.onclick = async () => {
+                curIdx++; // インデックスを進めておく
+                await generateAIQuestionsBatch();
+                window.scrollTo(0, 0);
+            };
+          } else {
             nextBtn.textContent = "結果を見る";
             nextBtn.onclick = window.showResults;
-          } else {
-            nextBtn.textContent = "次の問題へ";
-            nextBtn.onclick = window.goNext;
           }
+      } else {
+          nextBtn.textContent = "次の問題へ";
+          nextBtn.onclick = window.goNext;
       }
     } else {
       expBox.classList.remove("show");
@@ -950,21 +968,15 @@
     renderQuestion();
   };
 
-  window.goNext = async function() {
-    if (isAiMode) {
-        curIdx++;
-        await loadNextAIQuestion();
-        window.scrollTo(0, 0);
-    } else {
-        if (curIdx < filteredQuestions.length - 1) {
-          curIdx++; renderQuestion(); window.scrollTo(0, 0);
-        }
+  window.goNext = function() {
+    if (curIdx < filteredQuestions.length - 1) {
+        curIdx++; renderQuestion(); window.scrollTo(0, 0);
     }
   };
 
   window.quitQuiz = function() {
     if (isAiMode) {
-        if(confirm("AI無限特訓を終了して結果を見ますか？")) {
+        if(confirm("AI網羅特訓を終了して結果を見ますか？")) {
             window.showResults();
         }
     } else {
