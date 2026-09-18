@@ -294,7 +294,7 @@
 
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
-    <button id="start-btn" class="nav-btn" onclick="startQuiz()">演習を開始する</button>
+    <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
 
     <div class="settings-area">
@@ -323,8 +323,8 @@
 
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが広範囲な予想問題を<br>5問まとめて生成しています...</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">しばらくお待ちください</div>
+      <div style="font-weight: bold; color: #8b5cf6; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
@@ -683,7 +683,7 @@
       countEl.style.background = 'var(--info-bg)';
       countEl.style.color = 'var(--primary)';
       startBtn.disabled = false;
-      startBtn.textContent = '演習を開始する';
+      startBtn.textContent = '過去問演習を開始する';
     }
   };
 
@@ -784,50 +784,51 @@
     const subgenre = document.getElementById('subgenre-filter').value;
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
-    // 最新モデル 3.6-flash を指定
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`;
     
-    // 広範囲を網羅するための指示
-    let topicHint = "衛生工学全般に関する基礎知識から最新動向（関連法規、技術トレンドなど）まで、幅広く網羅的に";
+    // トピックの指定
+    let topicHint = "衛生工学全般";
     if (genre && genre !== "all") {
-        topicHint = `衛生工学部門の「${genre}」分野全般について基礎から応用まで幅広く網羅し`;
+        topicHint = `衛生工学部門の「${genre}」分野全般`;
         if (subgenre && subgenre !== "all") {
-            topicHint += `（特に「${subgenre}」の多角的な視点を含めて）`;
+            topicHint += `（特に「${subgenre}」にフォーカス）`;
         }
     }
 
-    const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下のテーマに関する、試験に出題されるレベルの専門知識を問う【五肢択一問題】を、異なる切り口で「5問」生成してください。
-テーマ: ${topicHint}
-問題は実用的で、出題範囲ができるだけ重複しないように幅広く作成してください。
-
-必ず以下のJSONスキーマに「厳密に」従って出力してください。（Markdownのブロックなどは不要です。JSONテキストのみを出力してください）
-{
-  "type": "object",
-  "properties": {
-    "questions": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "question": { "type": "string", "description": "問題文（「〜について、最も不適切なものはどれか」等の形式）" },
-          "options": {
-            "type": "array",
-            "items": { "type": "string" },
-            "minItems": 5,
-            "maxItems": 5
-          },
-          "answer": { "type": "integer", "description": "正解のインデックス番号(0〜4)" },
-          "explanation": { "type": "string", "description": "各選択肢がなぜ正しい/誤っているかの詳しい解説" }
-        },
-        "required": ["question", "options", "answer", "explanation"]
-      },
-      "minItems": 5,
-      "maxItems": 5
+    // ★ 過去問DBから参考テキストを抽出（多すぎる場合はランダムに最大150問を抽出）
+    let targetForRef = (genre === "all") ? allQuestions : currentTargetQuestions;
+    let refQuestions = targetForRef.map(q => q.question);
+    if (refQuestions.length > 150) {
+        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 150);
     }
-  },
-  "required": ["questions"]
-}`;
+    const refText = refQuestions.map(q => `・${q}`).join('\n');
+
+    const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
+以下の【過去の出題例（データベース）】を分析し、難易度、文章の形式、専門用語のレベルを完璧に模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「5問」生成してください。
+
+【テーマ】
+${topicHint} （基礎から最新動向まで幅広く）
+
+【過去の出題例（参考用データベース）】
+${refText}
+
+【指示】
+・過去問の単なるコピーではなく、上記をベースに最新動向や関連知識を組み合わせたオリジナル問題にすること。
+・出題範囲ができるだけ重複しないように幅広く作成すること。
+
+必ず以下のJSONフォーマットで、テキストやMarkdownの装飾(バッククォート等)を一切含めず、純粋なJSON文字列のみを出力してください。
+{
+  "questions": [
+    {
+      "question": "問題文（「〜について、最も不適切なものはどれか」等の形式）",
+      "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
+      "answer": 0,
+      "explanation": "各選択肢がなぜ正しい/誤っているかの詳しい解説"
+    }
+  ]
+}
+※ "answer" は 0 から 4 までの整数（正解のインデックス）です。
+※ 必ず "questions" 配列の中に 5つの問題オブジェクト を含めてください。`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }],
@@ -850,18 +851,22 @@
       }
 
       if (result.candidates && result.candidates[0].content.parts[0].text) {
-        const textData = result.candidates[0].content.parts[0].text;
+        let textData = result.candidates[0].content.parts[0].text;
+        
+        // Markdownブロックが混入した場合の保険的除去処理
+        textData = textData.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
+
         const data = JSON.parse(textData);
         
         if (!data.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
-            throw new Error("AIが正しい形式の配列を生成しませんでした");
+            throw new Error("AIが正しい形式のデータを生成しませんでした");
         }
         
         // 生成された5問を問題配列に追加
         data.questions.forEach((qData, idx) => {
             filteredQuestions.push({
               id: "AI-" + Date.now() + "-" + idx,
-              year: "AI網羅予想",
+              year: "AI生成予想",
               genre: genre !== "all" ? genre : "AI総合",
               subgenre: subgenre !== "all" ? subgenre : "網羅的",
               question: qData.question,
@@ -881,7 +886,7 @@
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n※キーが正しい場合は、少し時間をおいてから再試行してください。`);
+      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n※少し時間をおいてから再試行してください。`);
       window.goToStart();
     }
   }
@@ -940,9 +945,9 @@
       nextBtn.disabled = false;
       if (curIdx === filteredQuestions.length - 1) {
           if (isAiMode) {
-            nextBtn.textContent = "次の5問を生成する (少し時間かかります)";
+            nextBtn.textContent = "次の5問を生成する (数秒かかります)";
             nextBtn.onclick = async () => {
-                curIdx++; // インデックスを進めておく
+                curIdx++; 
                 await generateAIQuestionsBatch();
                 window.scrollTo(0, 0);
             };
