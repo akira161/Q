@@ -107,6 +107,15 @@
     <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
     <br>データを読み込んでいます...
   </div>
+  
+  <div id="upload-content" style="display: none; text-align: left; padding: 20px;">
+      <div style="font-size: 0.95rem; color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 20px; line-height: 1.5;">
+          <b>自動読み込みに失敗しました。</b><br>
+          GitHub Pagesのキャッシュが原因である可能性があります。<br>
+          以下のボタンから直接「<b>matome.xlsx</b>」ファイルを選択して読み込んでください。
+      </div>
+      <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 1rem; width: 100%; padding: 12px; background: var(--bg); border: 1px dashed var(--border); border-radius: 8px;" onchange="handleManualUpload(event)">
+  </div>
 
   <div id="main-content" style="display: none;">
       <div class="filter-area">
@@ -138,20 +147,43 @@
   let genres = new Set();
 
   window.onload = async () => {
+    // キャッシュを回避するためにクエリパラメータを付与してリクエスト
+    const timestamp = new Date().getTime();
     try {
-      const response = await fetch(EXCEL_FILE);
-      if (!response.ok) throw new Error("File not found");
+      const response = await fetch(`${EXCEL_FILE}?t=${timestamp}`);
+      if (!response.ok) throw new Error("File not found or access denied.");
       const arrayBuffer = await response.arrayBuffer();
-      
+      processExcelData(arrayBuffer);
+    } catch (error) {
+      console.warn("自動読み込み失敗:", error);
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('upload-content').style.display = 'block';
+    }
+  };
+
+  window.handleManualUpload = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        processExcelData(e.target.result);
+      } catch (error) {
+        alert("エクセルの解析に失敗しました: " + error.message);
+      }
+    };
+    reader.readAsArrayBuffer(file);
+  };
+
+  function processExcelData(arrayBuffer) {
       const workbook = XLSX.read(arrayBuffer, {type: "array"});
-      // 最初のシートを読み込む（シート名が固定でない場合を考慮）
       const firstSheetName = workbook.SheetNames[0];
       const worksheet = workbook.Sheets[firstSheetName];
       
       const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
       
       allNotes = data.map(row => {
-          // 列名は実際のmatome.xlsxの構成に合わせて柔軟に取得
           const keys = Object.keys(row);
           let genre = row['分類'] || row['大分類'] || row['ジャンル'] || (keys.length > 0 ? row[keys[0]] : '未分類');
           let title = row['タイトル'] || row['項目'] || row['見出し'] || (keys.length > 1 ? row[keys[1]] : '無題');
@@ -167,20 +199,15 @@
       }).filter(n => n.title !== "" || n.content !== "");
 
       initUI();
-    } catch (error) {
-      console.error(error);
-      document.getElementById('loading').innerHTML = `
-        <div style="color: var(--danger-text);">データの読み込みに失敗しました。<br>
-        <span style="font-size:0.85rem; font-weight:normal;">'matome.xlsx' が同じフォルダに存在するか確認してください。</span></div>
-      `;
-    }
-  };
+  }
 
   function initUI() {
+      document.getElementById('upload-content').style.display = 'none';
       document.getElementById('loading').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
 
       const gSelect = document.getElementById('genre-filter');
+      gSelect.innerHTML = '<option value="all">すべての分類</option>'; // リセット
       Array.from(genres).sort().forEach(g => {
           if(g) gSelect.add(new Option(g, g));
       });
