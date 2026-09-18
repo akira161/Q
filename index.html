@@ -368,7 +368,7 @@
 
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
+      <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
     </div>
 
@@ -384,7 +384,7 @@
       
       <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(168,85,247,0.05); border-radius: 8px; border: 1px dashed rgba(168,85,247,0.3);">
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-        <div style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
+        <div id="ai-explain-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
       </div>
       
       <div id="ai-explain-result">
@@ -1001,6 +1001,15 @@
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
+    
+    // Liteモデル実行中のメッセージ更新
+    const aiLoadingMsg = document.getElementById('ai-loading-msg');
+    if (useLiteModel) {
+      aiLoadingMsg.innerHTML = "標準モデルが混雑しているため、<br>軽量モデル(Lite)で予想問題を生成しています...";
+    } else {
+      aiLoadingMsg.innerHTML = "AIが過去問DBを分析し、<br>予想問題を5問生成しています...";
+    }
+
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('next-btn').disabled = true;
     document.getElementById("quit-btn").textContent = "終了して結果を見る";
@@ -1067,8 +1076,9 @@ ${refText}
       const result = await response.json();
       
       if (!response.ok) {
-        if (response.status === 429 && !useLiteModel) {
-            console.warn("APIの利用制限(429)に到達。Liteモデルで再試行します...");
+        // 429 (Too Many Requests) または 503 (Service Unavailable) の場合はLiteモデルでリトライ
+        if ((response.status === 429 || response.status === 503) && !useLiteModel) {
+            console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで再試行します...`);
             return generateAIQuestionsBatch(true);
         }
         throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
@@ -1253,6 +1263,13 @@ ${refText}
     btn.style.display = "none";
     loading.style.display = "block";
     
+    const loadingMsg = document.getElementById("ai-explain-loading-msg");
+    if (useLiteModel) {
+      loadingMsg.innerHTML = "標準モデルが混雑しているため、<br>軽量モデル(Lite)で解説を生成しています...";
+    } else {
+      loadingMsg.innerHTML = "AIが詳細な解説を生成しています...";
+    }
+    
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
@@ -1284,8 +1301,9 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       const result = await response.json();
       
       if (!response.ok) {
-        if (response.status === 429 && !useLiteModel) {
-            console.warn("APIの利用制限(429)に到達。Liteモデルで解説を生成します...");
+        // 429 または 503 の場合はLiteモデルでリトライ
+        if ((response.status === 429 || response.status === 503) && !useLiteModel) {
+            console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで解説を生成します...`);
             return askAIExplain(true); 
         }
         throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
