@@ -24,6 +24,8 @@
       --success-text: #15803d;
       --danger-bg: #fee2e2;
       --danger-text: #b91c1c;
+      --danger-btn: #ef4444;
+      --danger-btn-hover: #dc2626;
       --info-bg: #eff6ff;
       --radius: 12px;
       --trend-bg: #fff7ed;
@@ -44,6 +46,8 @@
       --success-text: #4ade80;
       --danger-bg: rgba(185, 28, 28, 0.2);
       --danger-text: #f87171;
+      --danger-btn: #ef4444;
+      --danger-btn-hover: #f87171;
       --info-bg: rgba(59, 130, 246, 0.15);
       --trend-bg: rgba(194, 65, 12, 0.15);
       --trend-text: #fb923c;
@@ -129,7 +133,10 @@
     .nav-btn:hover:not(:disabled) { background-color: var(--primary-hover); transform: translateY(-1px); }
     .nav-btn:active:not(:disabled) { transform: translateY(0); box-shadow: none; }
     .nav-btn:disabled { background-color: var(--border); color: var(--text-muted); cursor: not-allowed; box-shadow: none; }
+    
     .nav-btn.secondary { background-color: var(--text-muted); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .nav-btn.danger { background-color: var(--danger-btn); box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2); }
+    .nav-btn.danger:hover:not(:disabled) { background-color: var(--danger-btn-hover); }
     
     .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
@@ -301,7 +308,7 @@
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
-    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
+    <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 無限特訓モード (5問ずつ生成)</button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -313,6 +320,17 @@
         </div>
         <div id="api-key-status" style="font-size: 0.8rem; margin-top: 6px; color: var(--text-muted);">
           ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
+        </div>
+      </div>
+      
+      <!-- データ管理用に追加 -->
+      <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
+      <h3>🗑️ データ管理</h3>
+      <div class="filter-group">
+        <button class="nav-btn danger" onclick="resetHistory()">学習記録をリセットする</button>
+        <div style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted); line-height: 1.5;">
+          ※総解答数、正解数、各問題の正誤履歴がすべて消去されます。<br>
+          （設定したAPIキーやテーマカラーはそのまま保持されます）
         </div>
       </div>
     </div>
@@ -355,7 +373,6 @@
         </div>
         <div id="ai-explain-text"></div>
       </div>
-      <!-- ここまで -->
       
     </div>
 
@@ -454,6 +471,7 @@
     }
   }
 
+  // --- 学習データのロードとセーブ ---
   function loadUserData() {
     try {
       const savedData = localStorage.getItem('app_memory');
@@ -472,6 +490,21 @@
       console.error("メモリの保存エラー", e);
     }
   }
+  
+  // --- 学習記録リセット機能 ---
+  window.resetHistory = function() {
+    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
+      // 統計と履歴だけを初期化（テーマ設定は保持）
+      userMemory.stats = { total: 0, correct: 0 };
+      userMemory.history = {};
+      
+      saveUserData();
+      updateMemoryUI(); // UI上の数字を0に
+      updateFilterUI(); // 未回答フィルターなどの計算をやり直す
+      
+      alert("学習記録をリセットしました。");
+    }
+  };
 
   function applyTheme() {
     const btn = document.getElementById('theme-btn');
@@ -793,7 +826,9 @@
     curIdx = 0;
     
     switchScreen('screen-quiz');
-    await generateAIQuestionsBatch(); 
+    await generateAIQuestionsBatch();
+  }
+
   async function generateAIQuestionsBatch(useLiteModel = false) {
     document.getElementById('q-text').style.display = 'none';
     document.getElementById('opt-box').style.display = 'none';
@@ -806,6 +841,7 @@
     const subgenre = document.getElementById('subgenre-filter').value;
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
+    // Liteモデルにフォールバックする仕組み
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -865,9 +901,10 @@ ${refText}
       const result = await response.json();
       
       if (!response.ok) {
+        // トークン切れ等(429)の場合、Liteモデルで再試行
         if (response.status === 429 && !useLiteModel) {
             console.warn("Rate limit exceeded for 3.6-flash. Falling back to 3.5-flash-lite...");
-            return generateAIQuestionsBatch(true); // Liteモデルで再試行
+            return generateAIQuestionsBatch(true); 
         }
         throw new Error(`[${response.status}] ${result.error?.message || "API呼び出しエラー"}`);
       }
@@ -892,6 +929,7 @@ ${refText}
               question: qData.question,
               options: qData.options,
               answer: qData.answer,
+              // Liteで生成した場合は明記する
               explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`
             });
         });
@@ -912,7 +950,95 @@ ${refText}
     }
   }
 
+  // --- 問題の描画と選択処理 ---
   function renderQuestion() {
+    const q = filteredQuestions[curIdx];
+    
+    // UIの更新
+    document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
+    document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
+    document.getElementById('q-text').textContent = q.question;
+    
+    // トレンドバッジの表示制御
+    const trendLabel = document.getElementById('trend-label');
+    if (!isAiMode && subgenreTrendScores[q.subgenre] >= 8) {
+        trendLabel.style.display = "inline-block";
+    } else {
+        trendLabel.style.display = "none";
+    }
+
+    // 選択肢ボタンの生成
+    const optBox = document.getElementById('opt-box');
+    optBox.innerHTML = ''; 
+    
+    q.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.textContent = `${idx + 1}. ${opt}`;
+        btn.onclick = () => selectOption(idx);
+        optBox.appendChild(btn);
+    });
+
+    // 解説やAIエリアを初期化（非表示にする）
+    document.getElementById('exp-box').classList.remove('show');
+    document.getElementById('ai-explain-result').style.display = 'none';
+    document.getElementById('ai-explain-btn').style.display = 'none';
+    
+    // 「次へ」ボタンの状態制御
+    const nextBtn = document.getElementById('next-btn');
+    nextBtn.disabled = true;
+    
+    // AIモードで最後の問題(5問目)に到達した場合
+    if (isAiMode && curIdx === filteredQuestions.length - 1) {
+        nextBtn.textContent = '次のAI予想問題へ';
+        nextBtn.onclick = () => generateAIQuestionsBatch();
+    } else if (curIdx === filteredQuestions.length - 1) {
+        nextBtn.textContent = '結果を見る';
+        nextBtn.onclick = showResults;
+    } else {
+        nextBtn.textContent = '次の問題へ';
+        nextBtn.onclick = goNext;
+    }
+  }
+
+  window.selectOption = function(selectedIdx) {
+    const q = filteredQuestions[curIdx];
+    sessionAnswers[q.id] = selectedIdx; // 回答を記録
+    const isCorrect = (selectedIdx === q.answer);
+
+    // ボタンの見た目を変える
+    const buttons = document.querySelectorAll('.option-btn');
+    buttons.forEach((btn, idx) => {
+        btn.disabled = true; 
+        if (idx === q.answer) {
+            btn.classList.add('correct'); 
+        } else if (idx === selectedIdx && !isCorrect) {
+            btn.classList.add('wrong'); 
+        }
+    });
+
+    // 正誤ステータスの表示
+    const resStatus = document.getElementById('res-status');
+    if (isCorrect) {
+        resStatus.innerHTML = '<span style="color:var(--success-text);">⭕ 正解</span>';
+    } else {
+        resStatus.innerHTML = '<span style="color:var(--danger-text);">❌ 不正解</span>';
+    }
+
+    // 解説テキストをセットして表示
+    document.getElementById('exp-text').textContent = q.explanation;
+    document.getElementById('exp-box').classList.add('show');
+    
+    // 「AI詳細解説機能」のボタンを表示（通常過去問モードのみ）
+    if (!isAiMode) {
+      document.getElementById('ai-explain-btn').style.display = 'block';
+    }
+    
+    // 「次へ」ボタンを有効化
+    document.getElementById('next-btn').disabled = false;
+  }
+
+  // --- AI 詳細解説機能 ---
   window.askAIExplain = async function(useLiteModel = false) {
     const apiKey = localStorage.getItem('my_gemini_api_key');
     if (!apiKey) {
@@ -971,7 +1097,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         let aiText = result.candidates[0].content.parts[0].text;
         
         loading.style.display = "none";
-        // Liteモデルで解説を生成した場合はその旨を明記
         resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
         resultBox.style.display = "block";
       } else {
