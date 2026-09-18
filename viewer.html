@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>衛生工学 まとめノート</title>
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <style>
+    :root {
+      --primary: #4338ca;
+      --bg: #f8fafc;
+      --card: #ffffff;
+      --text: #0f172a;
+      --text-muted: #64748b;
+      --border: #e2e8f0;
+      --radius: 12px;
+    }
+    
+    [data-theme="dark"] {
+      --primary: #6366f1;
+      --bg: #0f172a;
+      --card: #1e293b;
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --border: #334155;
+    }
+
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    body {
+      font-family: "Inter", -apple-system, BlinkMacSystemFont, "Helvetica Neue", "Hiragino Kaku Gothic ProN", sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 16px 12px;
+      display: flex;
+      justify-content: center;
+      min-height: 100vh;
+      transition: background-color 0.3s, color 0.3s;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      background: var(--card);
+      padding: 24px 20px;
+      border-radius: 16px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      align-self: flex-start;
+    }
+    
+    .top-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .nav-link-btn {
+        background: transparent; border: 1px solid var(--primary); color: var(--primary);
+        cursor: pointer; height: 36px; border-radius: 18px; padding: 0 16px;
+        display: flex; align-items: center; justify-content: center; transition: 0.2s;
+        font-size: 0.9rem; font-weight: bold; text-decoration: none;
+    }
+    .nav-link-btn:hover { background: var(--primary); color: white; }
+    
+    h1 { margin-top: 0; font-size: 1.5rem; color: var(--primary); }
+    
+    #loading { text-align: center; padding: 40px; color: var(--text-muted); font-weight: bold; }
+    .spinner { animation: spin 1s linear infinite; margin-bottom: 16px; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+
+    .filter-area {
+        display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap;
+    }
+    .filter-select {
+        flex: 1; min-width: 200px; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--bg); color: var(--text); font-size: 0.95rem;
+    }
+    .filter-input {
+        flex: 2; min-width: 200px; padding: 12px; border-radius: 8px; border: 1px solid var(--border);
+        background: var(--bg); color: var(--text); font-size: 0.95rem;
+    }
+
+    .note-list { display: flex; flex-direction: column; gap: 16px; }
+    .note-card {
+        padding: 20px; border: 1px solid var(--border); border-radius: var(--radius);
+        background: var(--bg); transition: 0.2s;
+    }
+    .note-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .note-header {
+        display: flex; justify-content: space-between; align-items: flex-start;
+        margin-bottom: 12px; border-bottom: 1px dashed var(--border); padding-bottom: 12px;
+    }
+    .note-cat { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; background: var(--card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);}
+    .note-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 8px; line-height: 1.4;}
+    .note-content { font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
+    
+    .empty-msg { text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  
+  <div class="top-bar">
+    <a href="index.html" class="nav-link-btn">← 過去問演習に戻る</a>
+  </div>
+
+  <h1>📚 衛生工学 まとめノート</h1>
+
+  <div id="loading">
+    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+    <br>データを読み込んでいます...
+  </div>
+
+  <div id="main-content" style="display: none;">
+      <div class="filter-area">
+          <select id="genre-filter" class="filter-select" onchange="renderNotes()">
+              <option value="all">すべての分類</option>
+          </select>
+          <input type="text" id="keyword-filter" class="filter-input" placeholder="キーワード検索..." oninput="renderNotes()">
+      </div>
+
+      <div id="note-list" class="note-list">
+          <!-- ノートがここに入る -->
+      </div>
+  </div>
+
+</div>
+
+<script>
+  // ユーザーのテーマ設定を引き継ぐ
+  try {
+    const savedData = localStorage.getItem('app_memory');
+    if (savedData) {
+      const memory = JSON.parse(savedData);
+      if (memory.theme === 'dark') document.body.setAttribute('data-theme', 'dark');
+    }
+  } catch(e) {}
+
+  const EXCEL_FILE = "matome.xlsx";
+  let allNotes = [];
+  let genres = new Set();
+
+  window.onload = async () => {
+    try {
+      const response = await fetch(EXCEL_FILE);
+      if (!response.ok) throw new Error("File not found");
+      const arrayBuffer = await response.arrayBuffer();
+      
+      const workbook = XLSX.read(arrayBuffer, {type: "array"});
+      // 最初のシートを読み込む（シート名が固定でない場合を考慮）
+      const firstSheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[firstSheetName];
+      
+      const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+      
+      allNotes = data.map(row => {
+          // 列名は実際のmatome.xlsxの構成に合わせて柔軟に取得
+          const keys = Object.keys(row);
+          let genre = row['分類'] || row['大分類'] || row['ジャンル'] || (keys.length > 0 ? row[keys[0]] : '未分類');
+          let title = row['タイトル'] || row['項目'] || row['見出し'] || (keys.length > 1 ? row[keys[1]] : '無題');
+          let content = row['内容'] || row['詳細'] || row['解説'] || (keys.length > 2 ? row[keys[2]] : '');
+          
+          if(genre) genres.add(genre.trim());
+          
+          return {
+              genre: genre.trim(),
+              title: title.trim(),
+              content: content.trim()
+          };
+      }).filter(n => n.title !== "" || n.content !== "");
+
+      initUI();
+    } catch (error) {
+      console.error(error);
+      document.getElementById('loading').innerHTML = `
+        <div style="color: var(--danger-text);">データの読み込みに失敗しました。<br>
+        <span style="font-size:0.85rem; font-weight:normal;">'matome.xlsx' が同じフォルダに存在するか確認してください。</span></div>
+      `;
+    }
+  };
+
+  function initUI() {
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('main-content').style.display = 'block';
+
+      const gSelect = document.getElementById('genre-filter');
+      Array.from(genres).sort().forEach(g => {
+          if(g) gSelect.add(new Option(g, g));
+      });
+
+      renderNotes();
+  }
+
+  window.renderNotes = function() {
+      const selectedGenre = document.getElementById('genre-filter').value;
+      const keyword = document.getElementById('keyword-filter').value.toLowerCase().trim();
+      const listContainer = document.getElementById('note-list');
+      
+      listContainer.innerHTML = '';
+
+      const filtered = allNotes.filter(n => {
+          const matchGenre = selectedGenre === 'all' || n.genre === selectedGenre;
+          const matchKw = keyword === '' || 
+                          n.title.toLowerCase().includes(keyword) || 
+                          n.content.toLowerCase().includes(keyword) ||
+                          n.genre.toLowerCase().includes(keyword);
+          return matchGenre && matchKw;
+      });
+
+      if (filtered.length === 0) {
+          listContainer.innerHTML = '<div class="empty-msg">条件に一致するノートがありません。</div>';
+          return;
+      }
+
+      filtered.forEach(note => {
+          const card = document.createElement('div');
+          card.className = 'note-card';
+          card.innerHTML = `
+              <div class="note-header">
+                  <span class="note-cat">${note.genre}</span>
+              </div>
+              <div class="note-title">${note.title}</div>
+              ${note.content ? `<div class="note-content" style="margin-top: 12px;">${note.content}</div>` : ''}
+          `;
+          listContainer.appendChild(card);
+      });
+  }
+</script>
+</body>
+</html>
