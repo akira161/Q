@@ -141,6 +141,11 @@
     .rel-q-text { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; font-weight: 600; white-space: pre-wrap;}
     .rel-q-ans { background: rgba(21, 128, 61, 0.1); color: #15803d; padding: 10px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; border-left: 4px solid #15803d; }
     [data-theme="dark"] .rel-q-ans { background: rgba(74, 222, 128, 0.1); color: #4ade80; border-left-color: #4ade80; }
+    
+    /* 追加：選択肢のリスト用スタイル */
+    .opt-line { line-height: 1.4; }
+    .opt-ans { font-weight: bold; color: #15803d; background: rgba(21, 128, 61, 0.05); border-radius: 4px; border: 1px solid rgba(21, 128, 61, 0.2); }
+    [data-theme="dark"] .opt-ans { color: #4ade80; background: rgba(74, 222, 128, 0.05); border-color: rgba(74, 222, 128, 0.2); }
   </style>
 </head>
 <body>
@@ -369,6 +374,17 @@
       });
   }
 
+  // 追加: JS文字列リテラル用エスケープ（改行やクォートによるSyntaxError防止）
+  function escapeJSString(str) {
+      if (!str) return '';
+      return String(str)
+          .replace(/\\/g, '\\\\')
+          .replace(/'/g, "\\'")
+          .replace(/"/g, '\\"')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r');
+  }
+
   // 追加: モーダル表示と関連過去問の検索処理
   window.showRelatedModal = function(title, genre) {
       if (pastExamQuestions.length === 0) {
@@ -383,9 +399,11 @@
       modal.classList.add('show');
       
       setTimeout(() => {
-          // タイトルを単語に分割してヒット率を上げる
-          let searchTerms = title.split(/[\s（）()・]/).filter(t => t.length > 1);
-          if (searchTerms.length === 0) searchTerms = [title];
+          // タイトルとジャンルを単語に分割してヒット率を上げる
+          let searchTerms = title.split(/[\s（）()・、。，．\n]/).filter(t => t.length > 1);
+          if (searchTerms.length === 0 && title) searchTerms = [title.substring(0, 15)];
+          
+          let genreTerms = genre ? genre.split(/[\s（）()・、。，．\n]/).filter(t => t.length > 1) : [];
 
           let matched = pastExamQuestions.map(q => {
               let score = 0;
@@ -394,8 +412,15 @@
                   if (q.question.includes(term)) score += 3;
                   if (q.options.some(opt => opt.includes(term))) score += 1;
               });
-              if (q.subgenre === genre) score += 3;
-              if (q.genre === genre) score += 1;
+              
+              genreTerms.forEach(term => {
+                  if (q.genre.includes(term)) score += 3;
+                  if (q.subgenre.includes(term)) score += 4;
+                  if (q.theme.includes(term)) score += 2;
+              });
+
+              if (genre && q.subgenre === genre) score += 5;
+              if (genre && q.genre === genre) score += 3;
               
               return { q, score };
           }).filter(item => item.score > 0);
@@ -406,15 +431,22 @@
           const topQs = matched.slice(0, 3); // 上位3件を表示
           
           if (topQs.length === 0) {
-              contentBox.innerHTML = '<div class="empty-msg">関連する問題が見つかりませんでした。</div>';
+              contentBox.innerHTML = '<div class="empty-msg">関連する問題が見つかりませんでした。<br><span style="font-size:0.85rem; color:var(--text-muted);">（検索条件を変更してみてください）</span></div>';
               return;
           }
           
           contentBox.innerHTML = '';
           topQs.forEach(item => {
               const q = item.q;
-              const ansText = q.ansIdx >= 0 && q.options[q.ansIdx] ? q.options[q.ansIdx] : "正答データなし";
-              const ansNumber = q.ansIdx >= 0 ? q.ansIdx + 1 : "-";
+              
+              // 選択肢のHTMLを生成
+              let optionsHtml = '<div style="margin: 12px 0; font-size: 0.9rem;">';
+              q.options.forEach((opt, idx) => {
+                  const isAns = (idx === q.ansIdx);
+                  const marker = isAns ? '✅' : '・';
+                  optionsHtml += `<div class="opt-line ${isAns ? 'opt-ans' : ''}" style="margin-bottom: 6px; padding: 4px 8px; padding-left: 1.5em; text-indent: -1.5em;">${marker} ${idx + 1}. ${escapeHtml(opt)}</div>`;
+              });
+              optionsHtml += '</div>';
               
               const qCard = document.createElement('div');
               qCard.className = 'rel-q-card';
@@ -423,11 +455,8 @@
                       <span style="color:var(--primary);">${q.year} ${q.qNum}</span>
                       <span style="margin-left: 8px; font-weight: normal; font-size: 0.75rem;">(関連度: ${item.score})</span>
                   </div>
-                  <div class="rel-q-text">${q.question}</div>
-                  <div class="rel-q-ans">
-                      <div style="margin-bottom: 4px;">✅ 正解: 選択肢 ${ansNumber}</div>
-                      <div style="font-size: 0.85rem; font-weight: normal;">${ansText}</div>
-                  </div>
+                  <div class="rel-q-text">${escapeHtml(q.question).replace(/\n/g, '<br>')}</div>
+                  ${optionsHtml}
               `;
               contentBox.appendChild(qCard);
           });
@@ -513,15 +542,19 @@
           let genreVal = genreKey && row[genreKey] ? row[genreKey] : '未分類';
           let titleVal = titleKey && row[titleKey] ? row[titleKey] : (genreVal !== '未分類' ? genreVal : `項目 ${index + 1}`);
 
+          // 長文や改行を含むタイトルによるJavaScriptエラーを防止
+          let escapedTitleForJS = escapeHtml(escapeJSString(titleVal));
+          let escapedGenreForJS = escapeHtml(escapeJSString(genreVal));
+
           let cardHtml = `
               <div class="note-header">
-                  <span class="note-cat">${genreVal}</span>
-                  <button class="related-q-btn" onclick="showRelatedModal('${escapeHtml(titleVal)}', '${escapeHtml(genreVal)}')">
+                  <span class="note-cat">${escapeHtml(genreVal)}</span>
+                  <button class="related-q-btn" onclick="showRelatedModal('${escapedTitleForJS}', '${escapedGenreForJS}')">
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
                       関連過去問を見る
                   </button>
               </div>
-              <div class="note-title">${titleVal}</div>
+              <div class="note-title">${escapeHtml(titleVal).replace(/\n/g, '<br>')}</div>
           `;
 
           let tableHtml = '<table class="data-table"><tbody>';
