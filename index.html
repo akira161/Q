@@ -1002,7 +1002,6 @@
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
     
-    // Liteモデル実行中のメッセージ更新
     const aiLoadingMsg = document.getElementById('ai-loading-msg');
     if (useLiteModel) {
       aiLoadingMsg.innerHTML = "標準モデルが混雑しているため、<br>軽量モデル(Lite)で予想問題を生成しています...";
@@ -1019,7 +1018,7 @@
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
     
-    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
     let topicHint = "衛生工学全般";
@@ -1050,7 +1049,7 @@ ${refText}
 ・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
 ・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
 
-必ず以下のJSONフォーマットで、Markdown装飾を含めず、純粋なJSON文字列のみを出力してください。
+以下のJSONフォーマットで出力してください。
 {
   "questions": [
     {
@@ -1063,7 +1062,10 @@ ${refText}
 }`;
 
     const payload = {
-      contents: [{ parts: [{ text: prompt }] }]
+      contents: [{ parts: [{ text: prompt }] }],
+      generationConfig: {
+          response_mime_type: "application/json"
+      }
     };
 
     try {
@@ -1076,7 +1078,6 @@ ${refText}
       const result = await response.json();
       
       if (!response.ok) {
-        // 429 (Too Many Requests) または 503 (Service Unavailable) の場合はLiteモデルでリトライ
         if ((response.status === 429 || response.status === 503) && !useLiteModel) {
             console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで再試行します...`);
             return generateAIQuestionsBatch(true);
@@ -1085,10 +1086,9 @@ ${refText}
       }
 
       if (result.candidates && result.candidates[0].content.parts[0].text) {
-        let textData = result.candidates[0].content.parts[0].text;
-        textData = textData.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
-
+        const textData = result.candidates[0].content.parts[0].text;
         const data = JSON.parse(textData);
+        
         if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
         
         const startIndex = filteredQuestions.length;
@@ -1270,7 +1270,7 @@ ${refText}
       loadingMsg.innerHTML = "AIが詳細な解説を生成しています...";
     }
     
-    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
@@ -1283,9 +1283,7 @@ ${q.question}
 ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 
 【正解】
-選択肢 ${q.answer + 1}
-
-※マークダウン記法（**や#）は使用せず、普通のテキストで見やすく書いてください。`;
+選択肢 ${q.answer + 1}`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }]
@@ -1301,7 +1299,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       const result = await response.json();
       
       if (!response.ok) {
-        // 429 または 503 の場合はLiteモデルでリトライ
         if ((response.status === 429 || response.status === 503) && !useLiteModel) {
             console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで解説を生成します...`);
             return askAIExplain(true); 
