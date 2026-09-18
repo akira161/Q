@@ -76,10 +76,21 @@
         background: var(--bg); color: var(--text); font-size: 0.95rem;
     }
 
+    .sheet-tabs {
+        display: flex; gap: 8px; margin-bottom: 16px; overflow-x: auto; padding-bottom: 8px;
+    }
+    .sheet-tab {
+        padding: 8px 16px; border-radius: 20px; border: 1px solid var(--border);
+        background: var(--bg); color: var(--text-muted); cursor: pointer;
+        font-size: 0.9rem; font-weight: bold; white-space: nowrap; transition: 0.2s;
+    }
+    .sheet-tab:hover { background: var(--border); }
+    .sheet-tab.active { background: var(--primary); color: white; border-color: var(--primary); }
+
     .note-list { display: flex; flex-direction: column; gap: 16px; }
     .note-card {
         padding: 20px; border: 1px solid var(--border); border-radius: var(--radius);
-        background: var(--bg); transition: 0.2s;
+        background: var(--bg); transition: 0.2s; overflow-x: auto;
     }
     .note-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
     .note-header {
@@ -88,7 +99,12 @@
     }
     .note-cat { font-size: 0.8rem; color: var(--text-muted); font-weight: bold; background: var(--card); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--border);}
     .note-title { font-size: 1.1rem; font-weight: 700; color: var(--text); margin-top: 8px; line-height: 1.4;}
-    .note-content { font-size: 0.95rem; line-height: 1.7; white-space: pre-wrap; color: var(--text); }
+    
+    /* テーブル形式での表示用スタイル */
+    .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
+    .data-table th, .data-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+    .data-table th { background-color: var(--card); color: var(--text-muted); font-weight: bold; }
+    .data-table td { background-color: var(--bg); color: var(--text); white-space: pre-wrap;}
     
     .empty-msg { text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; }
   </style>
@@ -111,13 +127,18 @@
   <div id="upload-content" style="display: none; text-align: left; padding: 20px;">
       <div style="font-size: 0.95rem; color: #b91c1c; background: #fee2e2; padding: 16px; border-radius: 8px; border: 1px solid #fca5a5; margin-bottom: 20px; line-height: 1.5;">
           <b>自動読み込みに失敗しました。</b><br>
-          GitHub Pagesのキャッシュが原因である可能性があります。<br>
           以下のボタンから直接「<b>matome.xlsx</b>」ファイルを選択して読み込んでください。
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 1rem; width: 100%; padding: 12px; background: var(--bg); border: 1px dashed var(--border); border-radius: 8px;" onchange="handleManualUpload(event)">
   </div>
 
   <div id="main-content" style="display: none;">
+      
+      <!-- シート切り替えタブ -->
+      <div id="sheet-tabs" class="sheet-tabs">
+          <!-- タブが動的に生成されます -->
+      </div>
+
       <div class="filter-area">
           <select id="genre-filter" class="filter-select" onchange="renderNotes()">
               <option value="all">すべての分類</option>
@@ -133,7 +154,6 @@
 </div>
 
 <script>
-  // ユーザーのテーマ設定を引き継ぐ
   try {
     const savedData = localStorage.getItem('app_memory');
     if (savedData) {
@@ -143,11 +163,11 @@
   } catch(e) {}
 
   const EXCEL_FILE = "matome.xlsx";
-  let allNotes = [];
-  let genres = new Set();
+  let sheetDataMap = {}; // シート名をキーとしたデータのマップ
+  let currentSheetName = "";
+  let currentGenres = new Set();
 
   window.onload = async () => {
-    // キャッシュを回避するためにクエリパラメータを付与してリクエスト
     const timestamp = new Date().getTime();
     try {
       const response = await fetch(`${EXCEL_FILE}?t=${timestamp}`);
@@ -178,40 +198,85 @@
 
   function processExcelData(arrayBuffer) {
       const workbook = XLSX.read(arrayBuffer, {type: "array"});
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-      
-      const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
-      
-      allNotes = data.map(row => {
-          const keys = Object.keys(row);
-          // 値が数値の場合エラーになるのを防ぐため、強制的に文字列に変換する
-          let genre = String(row['分類'] || row['大分類'] || row['ジャンル'] || (keys.length > 0 ? row[keys[0]] : '未分類'));
-          let title = String(row['タイトル'] || row['項目'] || row['見出し'] || (keys.length > 1 ? row[keys[1]] : '無題'));
-          let content = String(row['内容'] || row['詳細'] || row['解説'] || (keys.length > 2 ? row[keys[2]] : ''));
-          
-          if(genre) genres.add(genre.trim());
-          
-          return {
-              genre: genre.trim(),
-              title: title.trim(),
-              content: content.trim()
-          };
-      }).filter(n => n.title !== "" || n.content !== "");
+      sheetDataMap = {};
+      let firstValidSheet = "";
 
-      initUI();
+      workbook.SheetNames.forEach(sheetName => {
+          // 「目次」や「活用ガイド」が含まれるシートはスキップ
+          if (sheetName.includes("目次") || sheetName.includes("ガイド")) return;
+
+          const worksheet = workbook.Sheets[sheetName];
+          // ヘッダー行を2行目（インデックス1）と仮定して読み込む場合など調整が必要かもしれませんが、
+          // 一旦デフォルトで読み込み、空の行を弾く
+          const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
+          
+          if (data.length > 0) {
+              sheetDataMap[sheetName] = data;
+              if (!firstValidSheet) firstValidSheet = sheetName;
+          }
+      });
+
+      if (!firstValidSheet) {
+          throw new Error("有効なデータシートが見つかりませんでした。");
+      }
+
+      initUI(firstValidSheet);
   }
 
-  function initUI() {
+  function initUI(initialSheet) {
       document.getElementById('upload-content').style.display = 'none';
       document.getElementById('loading').style.display = 'none';
       document.getElementById('main-content').style.display = 'block';
 
+      // タブの生成
+      const tabsContainer = document.getElementById('sheet-tabs');
+      tabsContainer.innerHTML = '';
+      Object.keys(sheetDataMap).forEach(sheetName => {
+          const tab = document.createElement('div');
+          tab.className = `sheet-tab ${sheetName === initialSheet ? 'active' : ''}`;
+          // シート名の先頭の「②_」などを消してスッキリ表示
+          tab.textContent = sheetName.replace(/^[①-⑨0-9]+_/, ''); 
+          tab.onclick = () => switchSheet(sheetName);
+          tabsContainer.appendChild(tab);
+      });
+
+      switchSheet(initialSheet);
+  }
+
+  function switchSheet(sheetName) {
+      currentSheetName = sheetName;
+      
+      // タブのアクティブ状態更新
+      document.querySelectorAll('.sheet-tab').forEach(tab => {
+          tab.classList.remove('active');
+          if (tab.textContent === sheetName.replace(/^[①-⑨0-9]+_/, '')) {
+              tab.classList.add('active');
+          }
+      });
+
+      // フィルターとデータの更新
+      currentGenres = new Set();
+      const rawData = sheetDataMap[sheetName];
+      
+      // データの構造を解析して、どの列を「分類」として扱うか決める
+      if (rawData.length > 0) {
+          const keys = Object.keys(rawData[0]);
+          let genreKey = keys.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野"));
+          if (!genreKey && keys.length > 0) genreKey = keys[0];
+
+          rawData.forEach(row => {
+              if (genreKey && row[genreKey]) {
+                  currentGenres.add(String(row[genreKey]).trim());
+              }
+          });
+      }
+
       const gSelect = document.getElementById('genre-filter');
-      gSelect.innerHTML = '<option value="all">すべての分類</option>'; // リセット
-      Array.from(genres).sort().forEach(g => {
+      gSelect.innerHTML = '<option value="all">すべての分類</option>';
+      Array.from(currentGenres).sort().forEach(g => {
           if(g) gSelect.add(new Option(g, g));
       });
+      document.getElementById('keyword-filter').value = '';
 
       renderNotes();
   }
@@ -223,30 +288,64 @@
       
       listContainer.innerHTML = '';
 
-      const filtered = allNotes.filter(n => {
-          const matchGenre = selectedGenre === 'all' || n.genre === selectedGenre;
-          const matchKw = keyword === '' || 
-                          n.title.toLowerCase().includes(keyword) || 
-                          n.content.toLowerCase().includes(keyword) ||
-                          n.genre.toLowerCase().includes(keyword);
+      const rawData = sheetDataMap[currentSheetName];
+      if (!rawData || rawData.length === 0) return;
+
+      const keys = Object.keys(rawData[0]);
+      let genreKey = keys.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野")) || keys[0];
+      let titleKey = keys.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ")) || (keys.length > 1 ? keys[1] : "");
+
+      const filtered = rawData.filter(row => {
+          // ゴミデータ（空行など）を弾く
+          if (!row[keys[0]] && !row[keys[1]]) return false;
+
+          let genreVal = genreKey ? String(row[genreKey]).trim() : '';
+          const matchGenre = selectedGenre === 'all' || genreVal === selectedGenre;
+          
+          // 行の全データを文字列結合してキーワード検索
+          const rowText = Object.values(row).join(' ').toLowerCase();
+          const matchKw = keyword === '' || rowText.includes(keyword);
+          
           return matchGenre && matchKw;
       });
 
       if (filtered.length === 0) {
-          listContainer.innerHTML = '<div class="empty-msg">条件に一致するノートがありません。</div>';
+          listContainer.innerHTML = '<div class="empty-msg">条件に一致するデータがありません。</div>';
           return;
       }
 
-      filtered.forEach(note => {
+      filtered.forEach((row, index) => {
+          // 見出し等に使えそうな行はスキップ（例：「過去16年分網羅…」のような説明行）
+          if (Object.values(row).filter(v => v !== "").length <= 1) return;
+
           const card = document.createElement('div');
           card.className = 'note-card';
-          card.innerHTML = `
+          
+          let genreVal = genreKey ? String(row[genreKey]).trim() : 'データ';
+          let titleVal = titleKey ? String(row[titleKey]).trim() : `項目 ${index + 1}`;
+
+          let cardHtml = `
               <div class="note-header">
-                  <span class="note-cat">${note.genre}</span>
+                  <span class="note-cat">${genreVal}</span>
               </div>
-              <div class="note-title">${note.title}</div>
-              ${note.content ? `<div class="note-content" style="margin-top: 12px;">${note.content}</div>` : ''}
+              <div class="note-title">${titleVal}</div>
           `;
+
+          // 残りのデータをテーブル形式で表示
+          let tableHtml = '<table class="data-table"><tbody>';
+          keys.forEach(k => {
+              if (k !== genreKey && k !== titleKey && row[k] !== "" && !k.startsWith("__EMPTY")) {
+                  tableHtml += `
+                      <tr>
+                          <th style="width: 30%;">${k}</th>
+                          <td>${String(row[k])}</td>
+                      </tr>
+                  `;
+              }
+          });
+          tableHtml += '</tbody></table>';
+
+          card.innerHTML = cardHtml + tableHtml;
           listContainer.appendChild(card);
       });
   }
