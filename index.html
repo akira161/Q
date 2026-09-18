@@ -260,9 +260,6 @@
         <div class="chart-container">
           <canvas id="radarChart"></canvas>
         </div>
-        <div class="chart-container" id="subgenreChartContainer" style="display: none;">
-          <canvas id="subgenreRadarChart"></canvas>
-        </div>
       </div>
     </div>
     
@@ -431,7 +428,6 @@
   
   let subgenreTrendScores = {}; 
   let radarChartInstance = null;
-  let subgenreRadarChartInstance = null;
 
   let currentTargetQuestions = [];
   let filteredQuestions = [];
@@ -542,9 +538,7 @@
       textColor: isDarkMode ? '#94a3b8' : '#64748b',
       gridColor: isDarkMode ? '#334155' : '#e2e8f0',
       bgColor: isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(67, 56, 202, 0.2)',
-      borderColor: isDarkMode ? '#818cf8' : '#4338ca',
-      subBgColor: isDarkMode ? 'rgba(168, 85, 247, 0.2)' : 'rgba(147, 51, 234, 0.2)',
-      subBorderColor: isDarkMode ? '#c084fc' : '#9333ea'
+      borderColor: isDarkMode ? '#818cf8' : '#4338ca'
     };
   }
 
@@ -637,124 +631,9 @@
     });
   }
 
-  function drawSubgenreRadarChart(selectedGenre) {
-    const container = document.getElementById('subgenreChartContainer');
-    if (!selectedGenre || selectedGenre === 'all') {
-      container.style.display = 'none';
-      return;
-    }
-
-    const subgenres = Array.from(genreToSubgenres[selectedGenre] || []).sort();
-    if (subgenres.length === 0) {
-      container.style.display = 'none';
-      return;
-    }
-
-    container.style.display = 'flex';
-    const ctx = document.getElementById('subgenreRadarChart').getContext('2d');
-    
-    const subgenreStats = {};
-    subgenres.forEach(sg => {
-        subgenreStats[sg] = { total: 0, correct: 0 };
-    });
-
-    allQuestions.forEach(q => {
-        if (q.genre === selectedGenre && q.subgenre && userMemory.history[q.id]) {
-            const h = userMemory.history[q.id];
-            if(subgenreStats[q.subgenre]){
-                subgenreStats[q.subgenre].total += (h.c + h.w);
-                subgenreStats[q.subgenre].correct += h.c;
-            }
-        }
-    });
-
-    const labels = [];
-    const data = [];
-
-    subgenres.forEach(sg => {
-        let shortName = sg;
-        if(sg.length > 8) shortName = sg.substring(0, 8) + '...';
-        labels.push(shortName);
-
-        const stats = subgenreStats[sg];
-        if (stats.total > 0) {
-            data.push(Math.round((stats.correct / stats.total) * 100));
-        } else {
-            data.push(0); 
-        }
-    });
-
-    const colors = getChartColors();
-
-    if (subgenreRadarChartInstance) {
-        subgenreRadarChartInstance.destroy();
-    }
-
-    subgenreRadarChartInstance = new Chart(ctx, {
-        type: 'radar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: '小分類 正答率 (%)',
-                data: data,
-                backgroundColor: colors.subBgColor,
-                borderColor: colors.subBorderColor,
-                pointBackgroundColor: colors.subBorderColor,
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: colors.subBorderColor,
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    angleLines: { color: colors.gridColor },
-                    grid: { color: colors.gridColor },
-                    pointLabels: {
-                        color: colors.textColor,
-                        font: { size: 10, family: "'Inter', sans-serif" }
-                    },
-                    ticks: {
-                        color: colors.textColor,
-                        backdropColor: 'transparent',
-                        stepSize: 25,
-                        min: 0,
-                        max: 100,
-                        display: false 
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                title: {
-                    display: true,
-                    text: `小分類分析 (${selectedGenre})`,
-                    color: colors.textColor,
-                    font: { size: 12, weight: 'normal' },
-                    padding: {top: 0, bottom: 5}
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return ` 正答率: ${context.parsed.r}%`;
-                        }
-                    }
-                }
-            }
-        }
-    });
-  }
-
   function updateChartsTheme() {
       if (radarChartInstance) {
           drawRadarChart(); 
-      }
-      const gSelect = document.getElementById('genre-filter');
-      if (gSelect && subgenreRadarChartInstance) {
-          drawSubgenreRadarChart(gSelect.value);
       }
   }
 
@@ -767,8 +646,6 @@
     
     if (masterGenres && masterGenres.length > 0) {
         drawRadarChart();
-        const gSelect = document.getElementById('genre-filter');
-        if(gSelect) drawSubgenreRadarChart(gSelect.value);
     }
   }
 
@@ -845,7 +722,7 @@
       const imgName = String(row['画像ファイル名'] || row['画像URL'] || '').trim();
       
       return {
-        id: String(row['問題ID'] || row['設問番号'] || `Q${index+1}`),
+        id: String(row['設問番号'] || `Q${index+1}`),
         year: yearStr,
         yearNum: yearNum,
         genre: block,
@@ -943,8 +820,6 @@
     let currentSubgenre = sSelect.value || 'all'; 
     const currentMemory = mSelect.value;
     const currentKeyword = document.getElementById('keyword-filter').value.toLowerCase().trim();
-
-    drawSubgenreRadarChart(currentGenre);
 
     sSelect.innerHTML = '<option value="all">すべての小分類</option>';
     let availableSubgenres = new Set();
@@ -1238,8 +1113,7 @@ ${refText}
       sourceEl.style.borderColor = 'rgba(168, 85, 247, 0.3)';
       sourceEl.style.background = 'rgba(168, 85, 247, 0.05)';
     } else {
-      let idText = q.id.startsWith('Q') ? '' : ` ${q.id}`; 
-      sourceEl.innerHTML = `📖 出典: ${q.year}${idText}`;
+      sourceEl.innerHTML = `📖 出典: ${q.year} ${q.id}`;
       sourceEl.style.color = 'var(--text-muted)';
       sourceEl.style.borderColor = 'var(--border)';
       sourceEl.style.background = 'var(--bg)';
