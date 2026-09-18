@@ -102,9 +102,9 @@
     
     /* テーブル形式での表示用スタイル */
     .data-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.9rem; }
-    .data-table th, .data-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; }
+    .data-table th, .data-table td { border: 1px solid var(--border); padding: 8px 12px; text-align: left; vertical-align: top;}
     .data-table th { background-color: var(--card); color: var(--text-muted); font-weight: bold; }
-    .data-table td { background-color: var(--bg); color: var(--text); white-space: pre-wrap;}
+    .data-table td { background-color: var(--bg); color: var(--text); white-space: pre-wrap; word-break: break-all;}
     
     .empty-msg { text-align: center; color: var(--text-muted); padding: 40px; font-style: italic; }
   </style>
@@ -206,8 +206,7 @@
           if (sheetName.includes("目次") || sheetName.includes("ガイド")) return;
 
           const worksheet = workbook.Sheets[sheetName];
-          // ヘッダー行を2行目（インデックス1）と仮定して読み込む場合など調整が必要かもしれませんが、
-          // 一旦デフォルトで読み込み、空の行を弾く
+          // ヘッダー行を1行目とみなして読み込む（defval:""で空セルも取得）
           const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
           
           if (data.length > 0) {
@@ -262,10 +261,10 @@
       if (rawData.length > 0) {
           const keys = Object.keys(rawData[0]);
           let genreKey = keys.find(k => k.includes("分類") || k.includes("ジャンル") || k.includes("分野"));
-          if (!genreKey && keys.length > 0) genreKey = keys[0];
+          if (!genreKey && keys.length > 0) genreKey = keys[0]; // 見つからなければ1列目
 
           rawData.forEach(row => {
-              if (genreKey && row[genreKey]) {
+              if (genreKey && row[genreKey] && String(row[genreKey]).trim() !== "") {
                   currentGenres.add(String(row[genreKey]).trim());
               }
           });
@@ -296,8 +295,9 @@
       let titleKey = keys.find(k => k.includes("タイトル") || k.includes("項目") || k.includes("テーマ")) || (keys.length > 1 ? keys[1] : "");
 
       const filtered = rawData.filter(row => {
-          // ゴミデータ（空行など）を弾く
-          if (!row[keys[0]] && !row[keys[1]]) return false;
+          // ゴミデータ（全くデータが入っていない行）を弾く
+          const hasData = keys.some(k => String(row[k]).trim() !== "");
+          if (!hasData) return false;
 
           let genreVal = genreKey ? String(row[genreKey]).trim() : '';
           const matchGenre = selectedGenre === 'all' || genreVal === selectedGenre;
@@ -315,14 +315,15 @@
       }
 
       filtered.forEach((row, index) => {
-          // 見出し等に使えそうな行はスキップ（例：「過去16年分網羅…」のような説明行）
-          if (Object.values(row).filter(v => v !== "").length <= 1) return;
+          // 見出し等に使えそうな行はスキップ（例：値が1つしか入っていない行）
+          const filledValues = Object.values(row).filter(v => String(v).trim() !== "");
+          if (filledValues.length <= 1 && keys.length > 2) return;
 
           const card = document.createElement('div');
           card.className = 'note-card';
           
-          let genreVal = genreKey ? String(row[genreKey]).trim() : 'データ';
-          let titleVal = titleKey ? String(row[titleKey]).trim() : `項目 ${index + 1}`;
+          let genreVal = genreKey && row[genreKey] ? String(row[genreKey]).trim() : '未分類';
+          let titleVal = titleKey && row[titleKey] ? String(row[titleKey]).trim() : (genreVal !== '未分類' ? genreVal : `項目 ${index + 1}`);
 
           let cardHtml = `
               <div class="note-header">
@@ -333,19 +334,30 @@
 
           // 残りのデータをテーブル形式で表示
           let tableHtml = '<table class="data-table"><tbody>';
+          let hasTableData = false;
+
           keys.forEach(k => {
-              if (k !== genreKey && k !== titleKey && row[k] !== "" && !k.startsWith("__EMPTY")) {
+              // 分類やタイトルとして使った列以外で、値が空でないものを表示
+              // ※ `__EMPTY` で始まる列（見出しなし列）も、値があれば表示するよう変更
+              const cellValue = String(row[k]).trim();
+              
+              if (k !== genreKey && k !== titleKey && cellValue !== "") {
+                  hasTableData = true;
+                  // 列名が __EMPTY から始まる場合は、単に「詳細」などとするか、非表示にする
+                  // 今回はデータの中身を見たいとのことなので、キー名を適当に割り当ててでも表示する
+                  let displayKey = k.startsWith("__EMPTY") ? "詳細/値" : k;
+                  
                   tableHtml += `
                       <tr>
-                          <th style="width: 30%;">${k}</th>
-                          <td>${String(row[k])}</td>
+                          <th style="width: 35%;">${displayKey}</th>
+                          <td>${cellValue}</td>
                       </tr>
                   `;
               }
           });
           tableHtml += '</tbody></table>';
 
-          card.innerHTML = cardHtml + tableHtml;
+          card.innerHTML = cardHtml + (hasTableData ? tableHtml : '');
           listContainer.appendChild(card);
       });
   }
