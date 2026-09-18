@@ -140,7 +140,21 @@
     
     .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
-    .trend-badge { background: var(--trend-bg); color: var(--trend-text); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; margin-left: 8px; border: 1px solid rgba(194, 65, 12, 0.3); }
+    
+    /* 頻出度バッジのスタイル */
+    .trend-badge { padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: bold; margin-left: 8px; border: 1px solid; display: none; }
+    .trend-lv5 { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .trend-lv4 { background: #fff7ed; color: #c2410c; border-color: #fdba74; }
+    .trend-lv3 { background: #fef9c3; color: #854d0e; border-color: #fde047; }
+    .trend-lv2 { background: #f0fdf4; color: #15803d; border-color: #86efac; }
+    .trend-lv1 { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+
+    /* ダークモード時の頻出度バッジ */
+    [data-theme="dark"] .trend-lv5 { background: rgba(185, 28, 28, 0.2); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
+    [data-theme="dark"] .trend-lv4 { background: rgba(194, 65, 12, 0.2); color: #fdba74; border-color: rgba(251, 146, 60, 0.4); }
+    [data-theme="dark"] .trend-lv3 { background: rgba(133, 77, 14, 0.2); color: #fde047; border-color: rgba(250, 204, 21, 0.4); }
+    [data-theme="dark"] .trend-lv2 { background: rgba(21, 128, 61, 0.2); color: #86efac; border-color: rgba(74, 222, 128, 0.4); }
+    [data-theme="dark"] .trend-lv1 { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4); }
 
     .q-source-badge {
       display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; 
@@ -312,7 +326,7 @@
           ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
         </div>
       </div>
-      
+
       <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
       <h3>🗑️ データ管理</h3>
       <div class="filter-group">
@@ -329,12 +343,11 @@
     <div class="header">
       <div>
         <span id="cat-label" class="cat-label-badge">分野</span>
-        <span id="trend-label" class="trend-badge" style="display:none;">🔥頻出</span>
+        <span id="trend-label" class="trend-badge">🔥頻出度</span>
       </div>
       <span id="prog-label">問 1 / 1</span>
     </div>
 
-    <!-- 出典（ソース）表示バッジ -->
     <div id="q-source" class="q-source-badge"></div>
 
     <div id="ai-loading">
@@ -397,7 +410,6 @@
 </div>
 
 <script>
-  // ファイル名を最新版 (v28) にアップデート
   const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
   const SHEET_NAME = "過去問マスターDB";
 
@@ -406,7 +418,7 @@
   let masterGenres = [];
   let genreToSubgenres = {}; 
   
-  let subgenreTrendScores = {};
+  let subgenreTrendScores = {}; // レベル1〜5の評価用
 
   let currentTargetQuestions = [];
   let filteredQuestions = [];
@@ -463,6 +475,17 @@
     }
   }
 
+  window.resetHistory = function() {
+    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
+      userMemory.stats = { total: 0, correct: 0 };
+      userMemory.history = {};
+      saveUserData();
+      updateMemoryUI(); 
+      updateFilterUI(); 
+      alert("学習記録をリセットしました。");
+    }
+  };
+
   function loadUserData() {
     try {
       const savedData = localStorage.getItem('app_memory');
@@ -481,17 +504,6 @@
       console.error("メモリの保存エラー", e);
     }
   }
-  
-  window.resetHistory = function() {
-    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
-      userMemory.stats = { total: 0, correct: 0 };
-      userMemory.history = {};
-      saveUserData();
-      updateMemoryUI(); 
-      updateFilterUI(); 
-      alert("学習記録をリセットしました。");
-    }
-  };
 
   function applyTheme() {
     const btn = document.getElementById('theme-btn');
@@ -576,15 +588,15 @@
         if(opt) options.push(opt);
       }
       
-      // 正解番号の読み取り処理をより堅牢に
+      // 堅牢な正解インデックスの抽出処理
       let rawAns = String(row['公式正答'] || '').trim();
+      // 全角数字を半角に変換
       rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
       let ansIdx = 0;
-      if (/^[1-5]$/.test(rawAns)) {
-          ansIdx = parseInt(rawAns) - 1;
-      } else {
-          let ansMatch = rawAns.match(/[1-5]/);
-          if (ansMatch) ansIdx = parseInt(ansMatch[0]) - 1;
+      // 数字が含まれていればそれを正解とする
+      const ansMatch = rawAns.match(/[1-5]/);
+      if (ansMatch) {
+          ansIdx = parseInt(ansMatch[0]) - 1;
       }
       
       const theme = String(row['問題のテーマ・内容概要'] || '').trim();
@@ -607,6 +619,16 @@
     }).filter(q => q.question !== "");
   }
 
+  // 年度の新しさに応じた重みポイントを返す関数
+  function getYearWeight(diff) {
+      if (diff === 0) return 10; // 最新年
+      if (diff === 1) return 7;  // 1年前
+      if (diff === 2) return 5;  // 2年前
+      if (diff === 3) return 3;  // 3年前
+      if (diff === 4) return 2;  // 4年前
+      return 1;                  // 5年以上前
+  }
+
   function initApp() {
     const ySet = new Set();
     const gSet = new Set();
@@ -619,21 +641,41 @@
         if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set();
         if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre);
       }
+      // サブジャンルごとの出題年度を記録
       if(q.subgenre && q.yearNum > 0) {
           if(!subgenreYears[q.subgenre]) subgenreYears[q.subgenre] = [];
           subgenreYears[q.subgenre].push(q.yearNum);
       }
     });
 
+    // --- 頻出度（レベル1〜5）の独自計算ロジック ---
     let maxYearNum = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
+    let rawScores = {};
+    
     Object.keys(subgenreYears).forEach(sub => {
         let score = 0;
         subgenreYears[sub].forEach(y => {
-            let weight = 10 - (maxYearNum - y) * 2;
-            if (weight < 1) weight = 1; 
-            score += weight;
+            let diff = maxYearNum - y;
+            score += getYearWeight(diff); // 最近出た問題ほど高得点
         });
-        subgenreTrendScores[sub] = score;
+        rawScores[sub] = score;
+    });
+
+    // スコアの最大値を基準に、1〜5のレベルに分類する
+    let maxRawScore = Math.max(...Object.values(rawScores));
+    if (maxRawScore === 0) maxRawScore = 1;
+
+    Object.keys(rawScores).forEach(sub => {
+        let score = rawScores[sub];
+        let ratio = score / maxRawScore; // 0.0 〜 1.0の割合
+        
+        let level = 1;
+        if (ratio >= 0.8) level = 5;
+        else if (ratio >= 0.6) level = 4;
+        else if (ratio >= 0.4) level = 3;
+        else if (ratio >= 0.2) level = 2;
+        
+        subgenreTrendScores[sub] = { raw: score, level: level };
     });
 
     const sortedQuestionsByYear = [...allQuestions].sort((a, b) => b.yearNum - a.yearNum);
@@ -746,8 +788,9 @@
     if (count >= pool.length) return shuffleArray([...pool]);
 
     let weightedPool = pool.map(q => {
-      let score = subgenreTrendScores[q.subgenre] || 1;
-      return { q: q, weight: score };
+      let scoreObj = subgenreTrendScores[q.subgenre];
+      let weight = scoreObj ? scoreObj.raw : 1;
+      return { q: q, weight: weight };
     });
 
     let selected = [];
@@ -841,6 +884,7 @@
     const subgenre = document.getElementById('subgenre-filter').value;
     
     const apiKey = localStorage.getItem('my_gemini_api_key');
+    
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.6-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -854,38 +898,35 @@
 
     let targetForRef = (genre === "all") ? allQuestions : currentTargetQuestions;
     let refQuestions = targetForRef.map(q => q.question);
-    if (refQuestions.length > 150) {
-        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 150);
+    if (refQuestions.length > 100) {
+        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 100);
     }
     const refText = refQuestions.map(q => `・${q}`).join('\n');
 
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下の【過去の出題例（データベース）】を分析し、難易度、文章の形式、専門用語のレベルを完璧に模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「5問」生成してください。
+以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「5問」生成してください。
 
 【テーマ】
-${topicHint} （基礎から最新動向まで幅広く）
+${topicHint}
 
-【過去の出題例（参考用データベース）】
+【過去の出題例（参考）】
 ${refText}
 
 【指示】
-・過去問の単なるコピーではなく、上記をベースに最新動向や関連知識を組み合わせたオリジナル問題にすること。
-・出題範囲ができるだけ重複しないように幅広く作成すること。
-・※重要：システム上、図表や画像を表示できません。そのため、「図Aに示す〜」「下表について〜」など、図表を用いないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
+・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
+・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
 
-必ず以下のJSONフォーマットで、テキストやMarkdownの装飾(バッククォート等)を一切含めず、純粋なJSON文字列のみを出力してください。
+必ず以下のJSONフォーマットで、Markdown装飾を含めず、純粋なJSON文字列のみを出力してください。
 {
   "questions": [
     {
-      "question": "問題文（「〜について、最も不適切なものはどれか」等の形式）",
+      "question": "問題文",
       "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
       "answer": 0,
-      "explanation": "各選択肢がなぜ正しい/誤っているかの詳しい解説"
+      "explanation": "解説"
     }
   ]
-}
-※ "answer" は 0 から 4 までの整数（正解のインデックス）です。
-※ 必ず "questions" 配列の中に 5つの問題オブジェクト を含めてください。`;
+}`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }]
@@ -902,10 +943,10 @@ ${refText}
       
       if (!response.ok) {
         if (response.status === 429 && !useLiteModel) {
-            console.warn("Rate limit exceeded for 3.6-flash. Falling back to 3.5-flash-lite...");
-            return generateAIQuestionsBatch(true); 
+            console.warn("APIの利用制限(429)に到達しました。Liteモデルに切り替えて再試行します...");
+            return generateAIQuestionsBatch(true);
         }
-        throw new Error(`[${response.status}] ${result.error?.message || "API呼び出しエラー"}`);
+        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
       }
 
       if (result.candidates && result.candidates[0].content.parts[0].text) {
@@ -913,10 +954,7 @@ ${refText}
         textData = textData.replace(/^```json\s*/, '').replace(/\s*```$/, '').trim();
 
         const data = JSON.parse(textData);
-        
-        if (!data.questions || !Array.isArray(data.questions) || data.questions.length === 0) {
-            throw new Error("AIが正しい形式のデータを生成しませんでした");
-        }
+        if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
         
         const startIndex = filteredQuestions.length;
         data.questions.forEach((qData, idx) => {
@@ -940,12 +978,10 @@ ${refText}
         
         curIdx = startIndex;
         renderQuestion();
-      } else {
-          throw new Error("APIからの応答が空でした");
       }
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【原因】\n${e.message}\n\n※少し時間をおいてから再試行してください。`);
+      alert(`AI問題の生成に失敗しました。\n\n【詳細】\n${e.message}`);
       window.goToStart();
     }
   }
@@ -972,20 +1008,27 @@ ${refText}
       sourceEl.style.background = 'var(--bg)';
     }
 
+    // 頻出度バッジ（レベル1〜5）の表示
+    const trendLabel = document.getElementById('trend-label');
+    if (!isAiMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
+        const lv = subgenreTrendScores[q.subgenre].level;
+        const stars = '★'.repeat(lv) + '☆'.repeat(5 - lv);
+        trendLabel.textContent = `頻出度 ${stars}`;
+        
+        trendLabel.className = 'trend-badge'; 
+        trendLabel.classList.add(`trend-lv${lv}`);
+        trendLabel.style.display = "inline-block";
+    } else {
+        trendLabel.style.display = "none";
+    }
+
     const imgContainer = document.getElementById("q-image-container");
     if (q.imageUrl) {
-        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="問題図">`;
+        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="問題図" onerror="this.style.display='none';">`;
         imgContainer.style.display = "block";
     } else {
         imgContainer.innerHTML = "";
         imgContainer.style.display = "none";
-    }
-
-    const trendLabel = document.getElementById('trend-label');
-    if (!isAiMode && subgenreTrendScores[q.subgenre] >= 8) {
-        trendLabel.style.display = "inline-block";
-    } else {
-        trendLabel.style.display = "none";
     }
 
     const optBox = document.getElementById('opt-box');
@@ -1049,6 +1092,22 @@ ${refText}
     if(sessionAnswers.hasOwnProperty(q.id)) return;
     
     sessionAnswers[q.id] = selectedIdx; 
+    
+    // "Wrong" answers filtering logic.
+    // If the answer is correct and the question is in the history with wrong answers,
+    // clear the wrong count so it doesn't appear in the "wrong" filter anymore.
+    if (!isAiMode) {
+      if (!userMemory.history[q.id]) {
+        userMemory.history[q.id] = { c: 0, w: 0 };
+      }
+      
+      const isCorrect = selectedIdx === q.answer;
+      if (isCorrect) {
+          // If correct, reset wrong count to 0 so it's removed from "wrong" filter pool.
+          userMemory.history[q.id].w = 0; 
+      }
+    }
+
     renderQuestion(); 
   }
 
@@ -1072,7 +1131,7 @@ ${refText}
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
     const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
-以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを、初学者にもわかりやすく詳細に解説してください。
+以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを詳細に解説してください。
 
 【問題文】
 ${q.question}
@@ -1083,7 +1142,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 【正解】
 選択肢 ${q.answer + 1}
 
-※注意：マークダウン記法（アスタリスク**や#など）は一切使用せず、普通のテキストの改行や「・」などの記号を使って見やすく構造化してください。`;
+※マークダウン記法（**や#）は使用せず、普通のテキストで見やすく書いてください。`;
 
     const payload = {
       contents: [{ parts: [{ text: prompt }] }]
@@ -1100,10 +1159,10 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       
       if (!response.ok) {
         if (response.status === 429 && !useLiteModel) {
-            console.warn("Rate limit exceeded for 3.6-flash explanation. Falling back to 3.5-flash-lite...");
+            console.warn("APIの利用制限(429)に到達。Liteモデルで解説を生成します...");
             return askAIExplain(true); 
         }
-        throw new Error(`[${response.status}] ${result.error?.message || "API呼び出しエラー"}`);
+        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
       }
 
       if (result.candidates && result.candidates[0].content.parts[0].text) {
@@ -1112,14 +1171,12 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         loading.style.display = "none";
         resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
         resultBox.style.display = "block";
-      } else {
-          throw new Error("APIからの応答が空でした");
       }
     } catch(e) {
       console.error("AI解説生成エラー", e);
       loading.style.display = "none";
       btn.style.display = "block";
-      alert(`AI解説の生成に失敗しました。\n\n【原因】\n${e.message}`);
+      alert(`AI解説の生成に失敗しました。\n\n【詳細】\n${e.message}`);
     }
   }
 
@@ -1161,6 +1218,8 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
           }
           if (isCorrect) {
             userMemory.history[q.id].c++;
+            // w = 0 is now handled in selectOption, but doing it here again is fine
+            userMemory.history[q.id].w = 0;
           } else {
             userMemory.history[q.id].w++;
           }
