@@ -261,6 +261,89 @@
       100% { transform: translateX(0); }
     }
     .misfire { animation: misfire 0.3s ease; border-color: var(--danger-text); }
+
+    /* --- ワクワク演出用の追加CSS --- */
+    
+    /* オーバーブースト状態（フィーバー） */
+    @keyframes pulse-glow {
+      0% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; }
+      50% { box-shadow: 0 0 15px #06b6d4, inset 0 0 10px #06b6d4; border-color: #22d3ee; }
+      100% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; }
+    }
+    .overboost-active {
+      animation: pulse-glow 1s infinite;
+      background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(59, 130, 246, 0.1));
+    }
+    
+    /* オーバーブーストバッジ */
+    .overboost-badge {
+      position: absolute;
+      top: -10px;
+      right: 10px;
+      background: #06b6d4;
+      color: white;
+      font-size: 0.65rem;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 4px;
+      box-shadow: 0 2px 4px rgba(6, 182, 212, 0.4);
+      transform: scale(0);
+      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    .overboost-active .overboost-badge {
+      transform: scale(1) rotate(5deg);
+    }
+
+    /* 獲得EXPのポップアップ文字 */
+    @keyframes float-up {
+      0% { opacity: 1; transform: translateY(0) scale(1); }
+      100% { opacity: 0; transform: translateY(-30px) scale(1.2); }
+    }
+    .exp-popup {
+      position: absolute;
+      color: #10b981;
+      font-weight: 900;
+      font-size: 1.2rem;
+      text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
+      pointer-events: none;
+      animation: float-up 1s ease-out forwards;
+      z-index: 100;
+    }
+    [data-theme="dark"] .exp-popup {
+      text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+    }
+
+    /* レベルアップ（シフトアップ）演出オーバーレイ */
+    @keyframes gear-up-flash {
+      0% { opacity: 0; transform: scale(0.5); }
+      20% { opacity: 1; transform: scale(1.1); }
+      40% { transform: scale(1); }
+      80% { opacity: 1; transform: scale(1); }
+      100% { opacity: 0; transform: scale(1.5); display: none;}
+    }
+    #gear-up-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.9);
+      z-index: 9999;
+      display: none;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+    }
+    [data-theme="dark"] #gear-up-overlay { background: rgba(15, 23, 42, 0.9); }
+    
+    .gear-up-text {
+      font-size: 4rem; font-weight: 900; font-style: italic;
+      background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin: 0;
+      text-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .gear-up-sub {
+      font-size: 1.5rem; font-weight: bold; color: var(--text);
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
@@ -420,7 +503,8 @@
     </div>
 
     <!-- エンジンダッシュボードUI -->
-    <div class="dashboard-panel" id="dashboard-panel">
+    <div class="dashboard-panel" id="dashboard-panel" style="position: relative;">
+      <div class="overboost-badge">OVERBOOST! x2</div>
       <div class="level-indicator">
         <span class="gear-label">GEAR</span>
         <span id="current-level" class="gear-number">1</span>
@@ -493,6 +577,12 @@
     <button class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
   </div>
 
+</div>
+
+<!-- レベルアップ演出用レイヤー -->
+<div id="gear-up-overlay">
+  <div class="gear-up-text">SHIFT UP!</div>
+  <div class="gear-up-sub" id="gear-up-level">GEAR 2</div>
 </div>
 
 <script>
@@ -755,6 +845,7 @@
 
   // メーターのUIを更新する関数
   function updateDashboardUI() {
+    const dashboard = document.getElementById('dashboard-panel');
     const levelEl = document.getElementById('current-level');
     const tachoBar = document.getElementById('tacho-bar');
     const boostBar = document.getElementById('boost-bar');
@@ -771,6 +862,55 @@
     levelEl.textContent = userMemory.level;
     tachoBar.style.width = `${expPercent}%`;
     boostBar.style.width = `${boostPercent}%`;
+
+    // オーバーブースト演出の切り替え
+    if (currentCombo >= 5) {
+      dashboard.classList.add('overboost-active');
+    } else {
+      dashboard.classList.add('overboost-active'); // To trigger reflow if needed
+      dashboard.classList.remove('overboost-active');
+    }
+  }
+
+  // 獲得EXPのポップアップ演出
+  function showExpPopup(gainedExp) {
+    const dashboard = document.getElementById('dashboard-panel');
+    if (!dashboard) return;
+
+    const popup = document.createElement('div');
+    popup.className = 'exp-popup';
+    popup.textContent = `+${gainedExp}`;
+    
+    // ダッシュボード中央付近にランダムなばらつきを持たせて配置
+    const randomX = Math.floor(Math.random() * 100) + 50; 
+    popup.style.left = `${randomX}px`;
+    popup.style.top = '10px';
+
+    dashboard.appendChild(popup);
+
+    // アニメーション終了後に要素を削除
+    setTimeout(() => {
+      if (popup.parentNode) popup.parentNode.removeChild(popup);
+    }, 1000);
+  }
+
+  // レベルアップ演出
+  function showGearUpAnimation(newLevel) {
+    const overlay = document.getElementById('gear-up-overlay');
+    const levelText = document.getElementById('gear-up-level');
+    
+    levelText.textContent = `GEAR ${newLevel}`;
+    overlay.style.display = 'flex';
+    overlay.style.animation = 'none'; // リセット
+    
+    // 強制リフロー
+    void overlay.offsetWidth; 
+    
+    overlay.style.animation = 'gear-up-flash 2s forwards ease-in-out';
+    
+    setTimeout(() => {
+      overlay.style.display = 'none';
+    }, 2000);
   }
 
   // 経験値を追加・計算する関数
@@ -778,12 +918,20 @@
     const dashboard = document.getElementById('dashboard-panel');
     
     if (isCorrect) {
+      const wasOverboost = currentCombo >= 5;
       currentCombo++;
       
-      // 基礎EXP + コンボボーナス
-      const baseExp = 100;
+      // オーバーブースト状態なら基礎EXPが2倍
+      const baseExp = (currentCombo > 5 || wasOverboost) ? 200 : 100;
+      
+      // コンボボーナス (最大100)
       const bonusExp = Math.min(currentCombo, 5) * 20; 
-      userMemory.exp += (baseExp + bonusExp);
+      
+      const totalGained = baseExp + bonusExp;
+      userMemory.exp += totalGained;
+      
+      // EXP獲得をポップアップで表示
+      showExpPopup(totalGained);
 
       // レベルアップ判定
       const nextLevelExp = userMemory.level * 500;
@@ -791,15 +939,16 @@
         userMemory.level++;
         userMemory.exp -= nextLevelExp; // はみ出た分を次のレベルに持ち越し
         
-        // 少し遅らせてアラートを出す（アニメーションを見せるため）
+        // 派手なレベルアップ演出を呼ぶ
         setTimeout(() => {
-          alert(`🎉 シフトアップ！ GEAR ${userMemory.level} に到達しました！\n\nエンジンが温まってきましたね！`);
+          showGearUpAnimation(userMemory.level);
         }, 500);
       }
     } else {
       // 不正解時はコンボリセット＆失火エフェクト
       currentCombo = 0;
       if(dashboard) {
+        dashboard.classList.remove('overboost-active');
         dashboard.classList.add('misfire');
         setTimeout(() => dashboard.classList.remove('misfire'), 300);
       }
