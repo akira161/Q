@@ -226,6 +226,11 @@
     .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
     .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
 
+    /* --- ゲームモード制御用CSS --- */
+    body:not([data-game-mode="true"]) .game-mode-only {
+      display: none !important;
+    }
+
     /* ダッシュボードUIのスタイル */
     .dashboard-panel {
       display: flex; align-items: center; gap: 16px;
@@ -352,6 +357,7 @@
   
   <div class="top-bar">
     <a href="viewer.html" class="nav-link-btn" title="まとめノートを閲覧">📚 まとめ閲覧</a>
+    <button class="icon-btn" id="game-mode-btn" onclick="toggleGameMode()" title="ゲームモードON/OFF">🎮</button>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
   </div>
 
@@ -380,8 +386,8 @@
         </div>
       </div>
       
-      <!-- レベルと経験値の表示をサマリーに追加 -->
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; background: var(--info-bg); padding: 12px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
+      <!-- レベルと経験値の表示をサマリーに追加 (ゲームモード時のみ表示) -->
+      <div class="game-mode-only" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; background: var(--info-bg); padding: 12px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
          <div style="text-align: center;">
             <span style="font-size: 0.7rem; color: var(--primary); font-weight: bold; display: block;">GEAR</span>
             <span id="ms-level" style="font-size: 1.4rem; color: var(--primary); font-weight: 900; font-style: italic;">1</span>
@@ -502,8 +508,8 @@
       <span id="prog-label">問 1 / 1</span>
     </div>
 
-    <!-- エンジンダッシュボードUI -->
-    <div class="dashboard-panel" id="dashboard-panel" style="position: relative;">
+    <!-- エンジンダッシュボードUI (ゲームモード時のみ表示) -->
+    <div class="dashboard-panel game-mode-only" id="dashboard-panel" style="position: relative;">
       <div class="overboost-badge">OVERBOOST! x2</div>
       <div class="level-indicator">
         <span class="gear-label">GEAR</span>
@@ -609,6 +615,7 @@
   // ユーザーメモリ構造の更新
   let userMemory = {
     theme: 'light',
+    gameMode: false, // ゲームモードのON/OFFフラグ
     stats: { total: 0, correct: 0 },
     history: {},
     exp: 0,    // 経験値
@@ -632,13 +639,42 @@
     // データ互換性のための初期化
     if (userMemory.exp === undefined) userMemory.exp = 0;
     if (userMemory.level === undefined) userMemory.level = 1;
+    if (userMemory.gameMode === undefined) userMemory.gameMode = false;
 
     initApp();
     applyTheme(); 
+    applyGameMode(); // ゲームモードのUI適用
     updateMemoryUI(); 
     loadApiKey();
     switchScreen('screen-start');
   }
+
+  // --- ゲームモード関連の関数 ---
+  function applyGameMode() {
+    const btn = document.getElementById('game-mode-btn');
+    if (userMemory.gameMode) {
+      document.body.setAttribute('data-game-mode', 'true');
+      btn.setAttribute('data-active', 'true');
+      btn.style.background = 'var(--primary)';
+      btn.style.color = 'white';
+      btn.style.borderColor = 'var(--primary)';
+      // ゲームモードON時はUIを最新状態に更新しておく
+      updateDashboardUI();
+    } else {
+      document.body.removeAttribute('data-game-mode');
+      btn.removeAttribute('data-active');
+      btn.style.background = '';
+      btn.style.color = '';
+      btn.style.borderColor = '';
+    }
+  }
+
+  window.toggleGameMode = function() {
+    userMemory.gameMode = !userMemory.gameMode;
+    applyGameMode();
+    saveUserData(); 
+  };
+
 
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
@@ -845,12 +881,15 @@
 
   // メーターのUIを更新する関数
   function updateDashboardUI() {
+    // ゲームモードがオフなら処理しない
+    if (!userMemory.gameMode) return;
+
     const dashboard = document.getElementById('dashboard-panel');
     const levelEl = document.getElementById('current-level');
     const tachoBar = document.getElementById('tacho-bar');
     const boostBar = document.getElementById('boost-bar');
     
-    if(!levelEl) return;
+    if(!levelEl || !dashboard) return;
 
     // 次のレベルまでの必要経験値 (レベルが上がるごとに増える)
     const nextLevelExp = userMemory.level * 500; 
@@ -874,6 +913,8 @@
 
   // 獲得EXPのポップアップ演出
   function showExpPopup(gainedExp) {
+    if (!userMemory.gameMode) return;
+
     const dashboard = document.getElementById('dashboard-panel');
     if (!dashboard) return;
 
@@ -896,6 +937,8 @@
 
   // レベルアップ演出
   function showGearUpAnimation(newLevel) {
+    if (!userMemory.gameMode) return;
+
     const overlay = document.getElementById('gear-up-overlay');
     const levelText = document.getElementById('gear-up-level');
     
@@ -915,6 +958,12 @@
 
   // 経験値を追加・計算する関数
   function processGameLogic(isCorrect) {
+    // ゲームモードがオフなら計算しない
+    if (!userMemory.gameMode) {
+      currentCombo = 0; // コンボはリセットしておく
+      return;
+    }
+
     const dashboard = document.getElementById('dashboard-panel');
     
     if (isCorrect) {
@@ -1271,7 +1320,7 @@
     
     // コンボをリセットしてダッシュボードUIを更新
     currentCombo = 0;
-    updateDashboardUI();
+    if (userMemory.gameMode) updateDashboardUI();
     
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('q-text').style.display = 'block';
@@ -1297,7 +1346,7 @@
     
     // コンボをリセットしてダッシュボードUIを更新
     currentCombo = 0;
-    updateDashboardUI();
+    if (userMemory.gameMode) updateDashboardUI();
     
     switchScreen('screen-quiz');
     await generateAIQuestionsBatch();
@@ -1550,12 +1599,12 @@ ${refText}
       userMemory.stats.total++;
       if (isCorrect) userMemory.stats.correct++;
       
-      // ゲームロジックを呼び出し (経験値やコンボの処理)
+      // ゲームロジックを呼び出し (ゲームモードON時のみ処理される)
       processGameLogic(isCorrect);
       
       saveUserData();
     } else {
-      // AIモード時もゲームの演出は行う (任意)
+      // AIモード時もゲームの演出は行う (ON時のみ)
       processGameLogic(isCorrect);
     }
 
