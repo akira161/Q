@@ -107,6 +107,7 @@
       padding: 16px; margin-bottom: 24px; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
     }
     .ms-title { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;}
+    
     .ms-stats { display: flex; justify-content: space-around; text-align: center; margin-bottom: 16px; }
     .ms-stats > div { display: flex; flex-direction: column; gap: 4px; }
     .ms-stats span { font-size: 0.75rem; color: var(--text-muted); font-weight: bold;}
@@ -224,6 +225,42 @@
 
     .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
     .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+
+    /* ダッシュボードUIのスタイル */
+    .dashboard-panel {
+      display: flex; align-items: center; gap: 16px;
+      background: var(--card); padding: 12px 16px; border-radius: 12px;
+      border: 1px solid var(--border); margin-bottom: 16px;
+      box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
+      transition: transform 0.2s;
+    }
+    .level-indicator { text-align: center; }
+    .gear-label { font-size: 0.7rem; font-weight: bold; color: var(--text-muted); display: block; }
+    .gear-number { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-style: italic; line-height: 1; }
+
+    /* タコメーター（経験値ゲージ） */
+    .tachometer { flex: 1; height: 14px; background: var(--bg); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
+    .tacho-bar { 
+      height: 100%; width: 0%; 
+      background: linear-gradient(90deg, #3b82f6, #10b981, #facc15, #ef4444); 
+      transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* 少し跳ねるような動き */
+    }
+
+    /* ブースト計（コンボゲージ） */
+    .boost-gauge { width: 70px; }
+    .boost-label { font-size: 0.7rem; font-weight: bold; color: var(--trend-text); display: block; text-align: right; }
+    .boost-bar-bg { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
+    .boost-bar-fill { height: 100%; width: 0%; background: #06b6d4; transition: width 0.3s ease; }
+
+    /* 不正解時の振動アニメーション */
+    @keyframes misfire {
+      0% { transform: translateX(0); }
+      25% { transform: translateX(-5px); }
+      50% { transform: translateX(5px); }
+      75% { transform: translateX(-5px); }
+      100% { transform: translateX(0); }
+    }
+    .misfire { animation: misfire 0.3s ease; border-color: var(--danger-text); }
   </style>
 </head>
 <body>
@@ -259,6 +296,24 @@
           あなたの端末内の学習記録
         </div>
       </div>
+      
+      <!-- レベルと経験値の表示をサマリーに追加 -->
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; background: var(--info-bg); padding: 12px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
+         <div style="text-align: center;">
+            <span style="font-size: 0.7rem; color: var(--primary); font-weight: bold; display: block;">GEAR</span>
+            <span id="ms-level" style="font-size: 1.4rem; color: var(--primary); font-weight: 900; font-style: italic;">1</span>
+         </div>
+         <div style="flex: 1;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: bold; margin-bottom: 4px; display: flex; justify-content: space-between;">
+               <span>EXP</span>
+               <span id="ms-exp-text">0 / 500</span>
+            </div>
+            <div style="height: 6px; background: var(--bg); border-radius: 3px; overflow: hidden; border: 1px solid var(--border);">
+               <div id="ms-exp-bar" style="height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981);"></div>
+            </div>
+         </div>
+      </div>
+
       <div class="ms-stats">
         <div><span>総解答数</span><b id="ms-total">0</b></div>
         <div><span>正解数</span><b id="ms-correct">0</b></div>
@@ -364,6 +419,21 @@
       <span id="prog-label">問 1 / 1</span>
     </div>
 
+    <!-- エンジンダッシュボードUI -->
+    <div class="dashboard-panel" id="dashboard-panel">
+      <div class="level-indicator">
+        <span class="gear-label">GEAR</span>
+        <span id="current-level" class="gear-number">1</span>
+      </div>
+      <div class="tachometer">
+        <div class="tacho-bar" id="tacho-bar"></div>
+      </div>
+      <div class="boost-gauge">
+        <span class="boost-label">BOOST</span>
+        <div class="boost-bar-bg"><div class="boost-bar-fill" id="boost-bar"></div></div>
+      </div>
+    </div>
+
     <div id="q-source" class="q-source-badge"></div>
 
     <div id="ai-loading">
@@ -443,10 +513,16 @@
   let sessionAnswers = {}; 
   let isAiMode = false; 
 
+  // ゲームフィケーション用変数の追加
+  let currentCombo = 0;
+
+  // ユーザーメモリ構造の更新
   let userMemory = {
     theme: 'light',
     stats: { total: 0, correct: 0 },
-    history: {} 
+    history: {},
+    exp: 0,    // 経験値
+    level: 1   // レベル(GEAR)
   };
   
   window.onload = async () => {
@@ -462,6 +538,11 @@
 
   function finishInit() {
     loadUserData();
+    
+    // データ互換性のための初期化
+    if (userMemory.exp === undefined) userMemory.exp = 0;
+    if (userMemory.level === undefined) userMemory.level = 1;
+
     initApp();
     applyTheme(); 
     updateMemoryUI(); 
@@ -493,9 +574,11 @@
   }
 
   window.resetHistory = function() {
-    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴が消去されます）\n※この操作は取り消せません。")) {
+    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴、経験値、レベルが消去されます）\n※この操作は取り消せません。")) {
       userMemory.stats = { total: 0, correct: 0 };
       userMemory.history = {};
+      userMemory.exp = 0;
+      userMemory.level = 1;
       saveUserData();
       updateMemoryUI(); 
       updateFilterUI(); 
@@ -652,9 +735,77 @@
     const rate = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
     document.getElementById('ms-rate').textContent = `${rate}%`;
     
+    // サマリー側のレベルとEXPを更新
+    const msLevelEl = document.getElementById('ms-level');
+    const msExpTextEl = document.getElementById('ms-exp-text');
+    const msExpBarEl = document.getElementById('ms-exp-bar');
+    
+    if (msLevelEl && msExpTextEl && msExpBarEl) {
+        msLevelEl.textContent = userMemory.level;
+        const nextLevelExp = userMemory.level * 500;
+        msExpTextEl.textContent = `${userMemory.exp} / ${nextLevelExp}`;
+        const expPercent = Math.min((userMemory.exp / nextLevelExp) * 100, 100);
+        msExpBarEl.style.width = `${expPercent}%`;
+    }
+    
     if (masterGenres && masterGenres.length > 0) {
         drawRadarChart();
     }
+  }
+
+  // メーターのUIを更新する関数
+  function updateDashboardUI() {
+    const levelEl = document.getElementById('current-level');
+    const tachoBar = document.getElementById('tacho-bar');
+    const boostBar = document.getElementById('boost-bar');
+    
+    if(!levelEl) return;
+
+    // 次のレベルまでの必要経験値 (レベルが上がるごとに増える)
+    const nextLevelExp = userMemory.level * 500; 
+    const expPercent = Math.min((userMemory.exp / nextLevelExp) * 100, 100);
+    
+    // ブースト圧の計算 (最大5コンボでMAX)
+    const boostPercent = Math.min((currentCombo / 5) * 100, 100);
+
+    levelEl.textContent = userMemory.level;
+    tachoBar.style.width = `${expPercent}%`;
+    boostBar.style.width = `${boostPercent}%`;
+  }
+
+  // 経験値を追加・計算する関数
+  function processGameLogic(isCorrect) {
+    const dashboard = document.getElementById('dashboard-panel');
+    
+    if (isCorrect) {
+      currentCombo++;
+      
+      // 基礎EXP + コンボボーナス
+      const baseExp = 100;
+      const bonusExp = Math.min(currentCombo, 5) * 20; 
+      userMemory.exp += (baseExp + bonusExp);
+
+      // レベルアップ判定
+      const nextLevelExp = userMemory.level * 500;
+      if (userMemory.exp >= nextLevelExp) {
+        userMemory.level++;
+        userMemory.exp -= nextLevelExp; // はみ出た分を次のレベルに持ち越し
+        
+        // 少し遅らせてアラートを出す（アニメーションを見せるため）
+        setTimeout(() => {
+          alert(`🎉 シフトアップ！ GEAR ${userMemory.level} に到達しました！\n\nエンジンが温まってきましたね！`);
+        }, 500);
+      }
+    } else {
+      // 不正解時はコンボリセット＆失火エフェクト
+      currentCombo = 0;
+      if(dashboard) {
+        dashboard.classList.add('misfire');
+        setTimeout(() => dashboard.classList.remove('misfire'), 300);
+      }
+    }
+    
+    updateDashboardUI();
   }
 
   async function loadExcelData() {
@@ -969,6 +1120,10 @@
     sessionAnswers = {};
     curIdx = 0;
     
+    // コンボをリセットしてダッシュボードUIを更新
+    currentCombo = 0;
+    updateDashboardUI();
+    
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('q-text').style.display = 'block';
     document.getElementById('opt-box').style.display = 'flex';
@@ -990,6 +1145,10 @@
     sessionAnswers = {};
     filteredQuestions = [];
     curIdx = 0;
+    
+    // コンボをリセットしてダッシュボードUIを更新
+    currentCombo = 0;
+    updateDashboardUI();
     
     switchScreen('screen-quiz');
     await generateAIQuestionsBatch();
@@ -1225,13 +1384,13 @@ ${refText}
     if(sessionAnswers.hasOwnProperty(q.id)) return;
     
     sessionAnswers[q.id] = selectedIdx; 
+    const isCorrect = selectedIdx === q.answer;
     
     if (!isAiMode) {
       if (!userMemory.history[q.id]) {
         userMemory.history[q.id] = { c: 0, w: 0 };
       }
       
-      const isCorrect = selectedIdx === q.answer;
       if (isCorrect) {
           userMemory.history[q.id].c++;
           userMemory.history[q.id].w = 0; 
@@ -1241,7 +1400,14 @@ ${refText}
       
       userMemory.stats.total++;
       if (isCorrect) userMemory.stats.correct++;
+      
+      // ゲームロジックを呼び出し (経験値やコンボの処理)
+      processGameLogic(isCorrect);
+      
       saveUserData();
+    } else {
+      // AIモード時もゲームの演出は行う (任意)
+      processGameLogic(isCorrect);
     }
 
     renderQuestion(); 
