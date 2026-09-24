@@ -10,6 +10,11 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- KaTeX (数式レンダリング用) を追加 -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+
   <style>
     :root {
       --primary: #4338ca;
@@ -192,9 +197,9 @@
     .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
     #ai-explain-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; }
 
-    .controls { display: flex; gap: 12px; margin-top: 32px; }
-    .controls .nav-btn.secondary { flex: 0.4; }
-    .controls .nav-btn#next-btn { flex: 1; }
+    .controls { display: flex; gap: 8px; margin-top: 32px; }
+    .controls .nav-btn.secondary { flex: 0.8; padding: 14px 8px; font-size: 0.95rem; }
+    .controls .nav-btn#next-btn { flex: 2; }
     
     .score-box { text-align: center; padding: 24px; background-color: var(--bg); border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--border); }
     .score-number { font-size: 3rem; font-weight: 800; color: var(--primary); margin: 8px 0; line-height: 1;}
@@ -558,6 +563,7 @@
 
     <div class="controls">
       <button class="nav-btn secondary" id="quit-btn" onclick="quitQuiz()">中断</button>
+      <button class="nav-btn secondary" id="skip-btn" onclick="skipQuestion()">スキップ ⏭️</button>
       <button class="nav-btn" id="next-btn" disabled>回答を選択してください</button>
     </div>
   </div>
@@ -1547,6 +1553,7 @@ ${refText}
     document.getElementById('ai-explain-btn').style.display = 'none';
     
     const nextBtn = document.getElementById('next-btn');
+    const skipBtn = document.getElementById('skip-btn');
     
     if (hasAnswered) {
       const isCorrect = sessionAnswers[q.id] === q.answer;
@@ -1558,6 +1565,8 @@ ${refText}
       if (!isAiMode) {
         document.getElementById('ai-explain-btn').style.display = 'block';
       }
+      
+      skipBtn.style.display = 'none'; // 解答後はスキップボタンを隠す
       
       nextBtn.disabled = false;
       if (isAiMode && curIdx === filteredQuestions.length - 1) {
@@ -1571,6 +1580,7 @@ ${refText}
           nextBtn.onclick = goNext;
       }
     } else {
+      skipBtn.style.display = 'block'; // 解答前はスキップボタンを表示
       nextBtn.disabled = true;
       nextBtn.textContent = '回答を選択してください';
       nextBtn.onclick = null;
@@ -1609,6 +1619,23 @@ ${refText}
     }
 
     renderQuestion(); 
+  }
+
+  // スキップボタンの処理関数
+  window.skipQuestion = function() {
+    // スキップした問題は sessionAnswers に記録せず、評価対象から外す
+    
+    if (curIdx === filteredQuestions.length - 1) {
+        if (isAiMode) {
+            generateAIQuestionsBatch();
+        } else {
+            showResults();
+        }
+    } else {
+        curIdx++;
+        renderQuestion();
+        window.scrollTo(0, 0);
+    }
   }
 
   window.askAIExplain = async function(useLiteModel = false) {
@@ -1674,8 +1701,31 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         let aiText = result.candidates[0].content.parts[0].text;
         
         loading.style.display = "none";
-        resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
+        
+        // マークダウンの太字と改行を簡易的にHTMLに変換
+        let formattedText = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
+        formattedText = formattedText
+            .replace(/</g, "&lt;").replace(/>/g, "&gt;") // サニタイズ
+            .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")     // 太字
+            .replace(/\n/g, "<br>");                    // 改行
+            
+        resultText.innerHTML = formattedText;
         resultBox.style.display = "block";
+
+        // KaTeXで数式をレンダリング
+        setTimeout(() => {
+            if (window.renderMathInElement) {
+                renderMathInElement(resultBox, {
+                    delimiters: [
+                        {left: '$$', right: '$$', display: true},
+                        {left: '$', right: '$', display: false},
+                        {left: '\\(', right: '\\)', display: false},
+                        {left: '\\[', right: '\\]', display: true}
+                    ],
+                    throwOnError: false
+                });
+            }
+        }, 50);
       }
     } catch(e) {
       console.error("AI解説生成エラー", e);
@@ -1711,6 +1761,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 
   window.showResults = function() {
     let correctCount = 0;
+    // sessionAnswersに記録されている（＝スキップされなかった）問題だけを評価
     const questionsToEval = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
     
     questionsToEval.forEach(q => {
