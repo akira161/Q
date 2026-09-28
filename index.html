@@ -10,7 +10,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-  <!-- KaTeX (数式レンダリング用) を追加 -->
+  <!-- KaTeX (数式レンダリング用) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
@@ -73,7 +73,7 @@
     }
     .container {
       width: 100%;
-      max-width: 600px;
+      max-width: 650px;
       background: var(--card);
       padding: 24px 20px;
       border-radius: 16px;
@@ -113,6 +113,11 @@
     }
     .ms-title { font-size: 0.85rem; font-weight: bold; color: var(--text-muted); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between;}
     
+    /* レベルと経験値 UI */
+    .game-mode-only { display: none !important; }
+    body[data-game-mode="true"] .game-mode-only { display: flex !important; }
+    body[data-game-mode="true"] .dashboard-panel { display: flex !important; }
+
     .ms-stats { display: flex; justify-content: space-around; text-align: center; margin-bottom: 16px; }
     .ms-stats > div { display: flex; flex-direction: column; gap: 4px; }
     .ms-stats span { font-size: 0.75rem; color: var(--text-muted); font-weight: bold;}
@@ -132,13 +137,11 @@
     
     #memory-filter { border: 2px solid rgba(99, 102, 241, 0.4); background: var(--info-bg); font-weight: bold;}
     #memory-filter:focus { border-color: var(--primary); }
-    
     select#order-filter option[value="trend"] { color: var(--trend-text); font-weight: bold; }
 
     .target-count-box {
       text-align: center; font-weight: bold; font-size: 1.1rem; padding: 12px;
       background: var(--info-bg); color: var(--primary); border-radius: 8px; margin-bottom: 16px;
-      transition: 0.3s;
     }
 
     .nav-btn { 
@@ -154,6 +157,16 @@
     .nav-btn.danger { background-color: var(--danger-btn); box-shadow: 0 2px 4px rgba(239, 68, 68, 0.2); }
     .nav-btn.danger:hover:not(:disabled) { background-color: var(--danger-btn-hover); }
     
+    #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
+    #start-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #9333ea, #c026d3); }
+    
+    #start-mock-btn { background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); margin-top: 16px; }
+    #start-mock-btn:hover:not(:disabled) { background: linear-gradient(135deg, #dc2626, #ea580c); }
+
+    .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
+    .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+
+    /* --- Quiz Single View Styles (通常モード) --- */
     .header { display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 600; border-bottom: 1px solid var(--border); padding-bottom: 12px; }
     .cat-label-badge { background: var(--border); color: var(--text); padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; }
     
@@ -163,12 +176,6 @@
     .trend-lv3 { background: #fef9c3; color: #854d0e; border-color: #fde047; }
     .trend-lv2 { background: #f0fdf4; color: #15803d; border-color: #86efac; }
     .trend-lv1 { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
-
-    [data-theme="dark"] .trend-lv5 { background: rgba(185, 28, 28, 0.2); color: #fca5a5; border-color: rgba(248, 113, 113, 0.4); }
-    [data-theme="dark"] .trend-lv4 { background: rgba(194, 65, 12, 0.2); color: #fdba74; border-color: rgba(251, 146, 60, 0.4); }
-    [data-theme="dark"] .trend-lv3 { background: rgba(133, 77, 14, 0.2); color: #fde047; border-color: rgba(250, 204, 21, 0.4); }
-    [data-theme="dark"] .trend-lv2 { background: rgba(21, 128, 61, 0.2); color: #86efac; border-color: rgba(74, 222, 128, 0.4); }
-    [data-theme="dark"] .trend-lv1 { background: rgba(100, 116, 139, 0.2); color: #cbd5e1; border-color: rgba(148, 163, 184, 0.4); }
 
     .q-source-badge {
       display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 6px; 
@@ -185,6 +192,7 @@
     }
     .option-btn:hover:not(:disabled) { border-color: var(--text-muted); background: var(--bg); }
     .option-btn:active:not(:disabled) { transform: scale(0.98); }
+    .option-btn.selected { background-color: var(--info-bg); border-color: var(--primary); font-weight: bold; }
     .option-btn.correct { background-color: var(--success-bg); border-color: var(--success-text); color: var(--success-text); font-weight: bold; }
     .option-btn.wrong { background-color: var(--danger-bg); border-color: var(--danger-text); color: var(--danger-text); font-weight: bold; opacity: 0.8; }
     .option-btn:disabled { cursor: default; }
@@ -200,10 +208,48 @@
     .controls { display: flex; gap: 8px; margin-top: 32px; }
     .controls .nav-btn.secondary { flex: 0.8; padding: 14px 8px; font-size: 0.95rem; }
     .controls .nav-btn#next-btn { flex: 2; }
+
+    #ai-loading { display: none; text-align: center; padding: 40px 20px; }
+
+    /* --- Mock Exam List View Styles (模試モード) --- */
+    #mock-status-bar {
+      position: sticky; top: 0; z-index: 100;
+      background: var(--card); border: 2px solid #ef4444; border-radius: 8px;
+      padding: 12px; margin-bottom: 24px; font-weight: bold; text-align: center;
+      box-shadow: 0 6px 12px rgba(239, 68, 68, 0.15);
+      transition: all 0.3s;
+    }
+    #mock-status-bar.locked { border-color: var(--success-text); box-shadow: 0 6px 12px rgba(21, 128, 61, 0.15); }
+    .mock-count { color: #ef4444; font-size: 1.3rem; transition: color 0.3s;}
+    #mock-status-bar.locked .mock-count { color: var(--success-text); }
     
+    .mock-q-card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 12px;
+      padding: 20px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+      transition: opacity 0.3s;
+    }
+    .mock-q-card.locked-out { opacity: 0.5; pointer-events: none; }
+    
+    .mock-q-header {
+      display: flex; justify-content: space-between; align-items: center;
+      border-bottom: 2px solid var(--border); padding-bottom: 12px; margin-bottom: 16px;
+    }
+    .mock-q-num { font-size: 1.2rem; font-weight: 800; color: var(--primary); }
+    
+    .mock-submit-area {
+      position: sticky; bottom: 16px; z-index: 100;
+      background: rgba(255, 255, 255, 0.9); backdrop-filter: blur(8px);
+      padding: 16px; border-radius: 12px; box-shadow: 0 -4px 16px rgba(0,0,0,0.1);
+      display: flex; gap: 12px; border: 1px solid var(--border);
+      margin-top: 40px;
+    }
+    [data-theme="dark"] .mock-submit-area { background: rgba(30, 41, 59, 0.9); }
+    
+    .mock-submit-area .nav-btn { flex: 1; }
+
+    /* --- Result Screen --- */
     .score-box { text-align: center; padding: 24px; background-color: var(--bg); border-radius: var(--radius); margin-bottom: 24px; border: 1px solid var(--border); }
     .score-number { font-size: 3rem; font-weight: 800; color: var(--primary); margin: 8px 0; line-height: 1;}
-    
     .history-filter { display: flex; gap: 8px; margin-bottom: 16px; background: var(--bg); padding: 4px; border-radius: 8px; border: 1px solid var(--border); }
     .history-filter label { flex: 1; text-align: center; padding: 8px; font-size: 0.9rem; font-weight: bold; color: var(--text-muted); cursor: pointer; border-radius: 6px; transition: 0.2s; }
     .history-filter input { display: none; }
@@ -223,151 +269,38 @@
     .ans-row { display: flex; gap: 8px; }
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
-    
-    #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
-    #start-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #9333ea, #c026d3); }
-    
-    /* 腕試しモード用のボタンCSS */
-    #start-mock-btn { background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); margin-top: 16px; }
-    #start-mock-btn:hover:not(:disabled) { background: linear-gradient(135deg, #dc2626, #ea580c); }
 
-    #ai-loading { display: none; text-align: center; padding: 40px 20px; }
-
-    .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
-    .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
-
-    /* --- ゲームモード制御用CSS --- */
-    body:not([data-game-mode="true"]) .game-mode-only {
-      display: none !important;
-    }
-
-    /* ダッシュボードUIのスタイル */
+    /* Dashboard & Game Mode */
     .dashboard-panel {
-      display: flex; align-items: center; gap: 16px;
+      display: none; align-items: center; gap: 16px;
       background: var(--card); padding: 12px 16px; border-radius: 12px;
       border: 1px solid var(--border); margin-bottom: 16px;
       box-shadow: inset 0 2px 4px rgba(0,0,0,0.02);
-      transition: transform 0.2s;
+      transition: transform 0.2s; position: relative;
     }
     .level-indicator { text-align: center; }
     .gear-label { font-size: 0.7rem; font-weight: bold; color: var(--text-muted); display: block; }
     .gear-number { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-style: italic; line-height: 1; }
-
-    /* タコメーター（経験値ゲージ） */
     .tachometer { flex: 1; height: 14px; background: var(--bg); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); }
-    .tacho-bar { 
-      height: 100%; width: 0%; 
-      background: linear-gradient(90deg, #3b82f6, #10b981, #facc15, #ef4444); 
-      transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); /* 少し跳ねるような動き */
-    }
-
-    /* ブースト計（コンボゲージ） */
+    .tacho-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981, #facc15, #ef4444); transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .boost-gauge { width: 70px; }
     .boost-label { font-size: 0.7rem; font-weight: bold; color: var(--trend-text); display: block; text-align: right; }
     .boost-bar-bg { height: 8px; background: var(--bg); border-radius: 4px; overflow: hidden; border: 1px solid var(--border); }
     .boost-bar-fill { height: 100%; width: 0%; background: #06b6d4; transition: width 0.3s ease; }
-
-    /* 不正解時の振動アニメーション */
-    @keyframes misfire {
-      0% { transform: translateX(0); }
-      25% { transform: translateX(-5px); }
-      50% { transform: translateX(5px); }
-      75% { transform: translateX(-5px); }
-      100% { transform: translateX(0); }
-    }
+    @keyframes misfire { 0% { transform: translateX(0); } 25% { transform: translateX(-5px); } 50% { transform: translateX(5px); } 75% { transform: translateX(-5px); } 100% { transform: translateX(0); } }
     .misfire { animation: misfire 0.3s ease; border-color: var(--danger-text); }
-
-    /* --- ワクワク演出用の追加CSS --- */
-    
-    /* オーバーブースト状態（フィーバー） */
-    @keyframes pulse-glow {
-      0% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; }
-      50% { box-shadow: 0 0 15px #06b6d4, inset 0 0 10px #06b6d4; border-color: #22d3ee; }
-      100% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; }
-    }
-    .overboost-active {
-      animation: pulse-glow 1s infinite;
-      background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(59, 130, 246, 0.1));
-    }
-    
-    /* オーバーブーストバッジ */
-    .overboost-badge {
-      position: absolute;
-      top: -10px;
-      right: 10px;
-      background: #06b6d4;
-      color: white;
-      font-size: 0.65rem;
-      font-weight: bold;
-      padding: 2px 6px;
-      border-radius: 4px;
-      box-shadow: 0 2px 4px rgba(6, 182, 212, 0.4);
-      transform: scale(0);
-      transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    }
-    .overboost-active .overboost-badge {
-      transform: scale(1) rotate(5deg);
-    }
-
-    /* 獲得EXPのポップアップ文字 */
-    @keyframes float-up {
-      0% { opacity: 1; transform: translateY(0) scale(1); }
-      100% { opacity: 0; transform: translateY(-30px) scale(1.2); }
-    }
-    .exp-popup {
-      position: absolute;
-      color: #10b981;
-      font-weight: 900;
-      font-size: 1.2rem;
-      text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff;
-      pointer-events: none;
-      animation: float-up 1s ease-out forwards;
-      z-index: 100;
-    }
-    [data-theme="dark"] .exp-popup {
-      text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
-    }
-
-    /* レベルアップ（シフトアップ）演出オーバーレイ */
-    @keyframes gear-up-flash {
-      0% { opacity: 0; transform: scale(0.5); }
-      20% { opacity: 1; transform: scale(1.1); }
-      40% { transform: scale(1); }
-      80% { opacity: 1; transform: scale(1); }
-      100% { opacity: 0; transform: scale(1.5); display: none;}
-    }
-    #gear-up-overlay {
-      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(255,255,255,0.9);
-      z-index: 9999;
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-    }
+    @keyframes pulse-glow { 0% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; } 50% { box-shadow: 0 0 15px #06b6d4, inset 0 0 10px #06b6d4; border-color: #22d3ee; } 100% { box-shadow: 0 0 5px #06b6d4, inset 0 0 5px #06b6d4; border-color: #06b6d4; } }
+    .overboost-active { animation: pulse-glow 1s infinite; background: linear-gradient(135deg, rgba(6, 182, 212, 0.1), rgba(59, 130, 246, 0.1)); }
+    .overboost-badge { position: absolute; top: -10px; right: 10px; background: #06b6d4; color: white; font-size: 0.65rem; font-weight: bold; padding: 2px 6px; border-radius: 4px; box-shadow: 0 2px 4px rgba(6, 182, 212, 0.4); transform: scale(0); transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+    .overboost-active .overboost-badge { transform: scale(1) rotate(5deg); }
+    @keyframes float-up { 0% { opacity: 1; transform: translateY(0) scale(1); } 100% { opacity: 0; transform: translateY(-30px) scale(1.2); } }
+    .exp-popup { position: absolute; color: #10b981; font-weight: 900; font-size: 1.2rem; text-shadow: 1px 1px 0 #fff, -1px -1px 0 #fff, 1px -1px 0 #fff, -1px 1px 0 #fff; pointer-events: none; animation: float-up 1s ease-out forwards; z-index: 100; }
+    [data-theme="dark"] .exp-popup { text-shadow: 1px 1px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000; }
+    @keyframes gear-up-flash { 0% { opacity: 0; transform: scale(0.5); } 20% { opacity: 1; transform: scale(1.1); } 40% { transform: scale(1); } 80% { opacity: 1; transform: scale(1); } 100% { opacity: 0; transform: scale(1.5); display: none;} }
+    #gear-up-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); z-index: 9999; display: none; flex-direction: column; justify-content: center; align-items: center; }
     [data-theme="dark"] #gear-up-overlay { background: rgba(15, 23, 42, 0.9); }
-    
-    .gear-up-text {
-      font-size: 4rem; font-weight: 900; font-style: italic;
-      background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      margin: 0;
-      text-shadow: 0 10px 20px rgba(0,0,0,0.1);
-    }
-    .gear-up-sub {
-      font-size: 1.5rem; font-weight: bold; color: var(--text);
-      margin-top: 10px;
-    }
-
-    /* 本番模試用UI */
-    #mock-status-bar {
-      display: none;
-      background: var(--card); border: 2px solid #ef4444; border-radius: 8px;
-      padding: 12px; margin-bottom: 16px; font-weight: bold; text-align: center;
-      box-shadow: 0 4px 6px rgba(239, 68, 68, 0.1);
-    }
-    .mock-count { color: #ef4444; font-size: 1.2rem; }
+    .gear-up-text { font-size: 4rem; font-weight: 900; font-style: italic; background: linear-gradient(to right, #3b82f6, #8b5cf6, #ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin: 0; text-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+    .gear-up-sub { font-size: 1.5rem; font-weight: bold; color: var(--text); margin-top: 10px; }
   </style>
 </head>
 <body>
@@ -405,8 +338,7 @@
         </div>
       </div>
       
-      <!-- レベルと経験値の表示をサマリーに追加 (ゲームモード時のみ表示) -->
-      <div class="game-mode-only" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; background: var(--info-bg); padding: 12px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
+      <div class="game-mode-only" style="align-items: center; gap: 12px; margin-bottom: 12px; background: var(--info-bg); padding: 12px; border-radius: 8px; border: 1px solid rgba(99, 102, 241, 0.3);">
          <div style="text-align: center;">
             <span style="font-size: 0.7rem; color: var(--primary); font-weight: bold; display: block;">GEAR</span>
             <span id="ms-level" style="font-size: 1.4rem; color: var(--primary); font-weight: 900; font-style: italic;">1</span>
@@ -492,7 +424,6 @@
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
-    <!-- ★ 本番模試モードボタン ★ -->
     <button id="start-mock-btn" class="nav-btn" onclick="startMockExam()">🔥 本番模試 腕試しモード (全35問から25問選択)</button>
 
     <div class="settings-area">
@@ -507,14 +438,12 @@
           ※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。
         </div>
       </div>
-
       <hr style="border: none; border-top: 1px dashed var(--border); margin: 24px 0;">
       <h3>🗑️ データ管理</h3>
       <div class="filter-group">
         <button class="nav-btn danger" onclick="resetHistory()">学習記録をリセットする</button>
         <div style="font-size: 0.8rem; margin-top: 8px; color: var(--text-muted); line-height: 1.5;">
-          ※総解答数、正解数、各問題の正誤履歴がすべて消去されます。<br>
-          （設定したAPIキーやテーマカラーはそのまま保持されます）
+          ※総解答数、正解数、各問題の正誤履歴、レベル、経験値がすべて消去されます。
         </div>
       </div>
     </div>
@@ -522,72 +451,82 @@
 
   <div id="screen-quiz" class="screen">
     
-    <!-- 本番模試用ステータスバー -->
-    <div id="mock-status-bar">
-      本番模試モード: 現在 <span id="mock-answered-count" class="mock-count">0</span> / 25問 解答済み
-      <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-top: 4px;">※全35問の中から、自信のある25問を選択して解答してください。</div>
-    </div>
-
-    <div class="header">
-      <div>
-        <span id="cat-label" class="cat-label-badge">分野</span>
-        <span id="trend-label" class="trend-badge">🔥頻出度</span>
-      </div>
-      <span id="prog-label">問 1 / 1</span>
-    </div>
-
-    <!-- エンジンダッシュボードUI (ゲームモード時のみ表示) -->
-    <div class="dashboard-panel game-mode-only" id="dashboard-panel" style="position: relative;">
-      <div class="overboost-badge">OVERBOOST! x2</div>
-      <div class="level-indicator">
-        <span class="gear-label">GEAR</span>
-        <span id="current-level" class="gear-number">1</span>
-      </div>
-      <div class="tachometer">
-        <div class="tacho-bar" id="tacho-bar"></div>
-      </div>
-      <div class="boost-gauge">
-        <span class="boost-label">BOOST</span>
-        <div class="boost-bar-bg"><div class="boost-bar-fill" id="boost-bar"></div></div>
-      </div>
-    </div>
-
-    <div id="q-source" class="q-source-badge"></div>
-
+    <!-- ローディング共通 -->
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去の出題傾向を分析し、<br>模試問題を作成しています...</div>
+      <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが問題を生成しています...</div>
       <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;" id="ai-loading-sub">少々お待ちください</div>
     </div>
 
-    <div class="question-box" id="q-text"></div>
-    <div id="q-image-container" style="display: none; text-align: center;"></div>
-    <div class="options" id="opt-box"></div>
-
-    <div class="explanation-box" id="exp-box">
-      <div class="result-status" id="res-status"></div>
-      <div id="exp-text"></div>
-      
-      <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
-      
-      <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(168,85,247,0.05); border-radius: 8px; border: 1px dashed rgba(168,85,247,0.3);">
-        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-        <div id="ai-explain-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
-      </div>
-      
-      <div id="ai-explain-result">
-        <div class="ai-exp-title">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-          AI詳細解説
+    <!-- 1. 通常演習・AI特訓用のシングルビュー -->
+    <div id="quiz-single-view" style="display: none;">
+      <div class="dashboard-panel" id="dashboard-panel">
+        <div class="overboost-badge">OVERBOOST! x2</div>
+        <div class="level-indicator">
+          <span class="gear-label">GEAR</span>
+          <span id="current-level" class="gear-number">1</span>
         </div>
-        <div id="ai-explain-text"></div>
+        <div class="tachometer"><div class="tacho-bar" id="tacho-bar"></div></div>
+        <div class="boost-gauge">
+          <span class="boost-label">BOOST</span>
+          <div class="boost-bar-bg"><div class="boost-bar-fill" id="boost-bar"></div></div>
+        </div>
+      </div>
+
+      <div class="header">
+        <div>
+          <span id="cat-label" class="cat-label-badge">分野</span>
+          <span id="trend-label" class="trend-badge">🔥頻出度</span>
+        </div>
+        <span id="prog-label">問 1 / 1</span>
+      </div>
+
+      <div id="q-source" class="q-source-badge"></div>
+      <div class="question-box" id="q-text"></div>
+      <div id="q-image-container" style="display: none; text-align: center;"></div>
+      <div class="options" id="opt-box"></div>
+
+      <div class="explanation-box" id="exp-box">
+        <div class="result-status" id="res-status"></div>
+        <div id="exp-text"></div>
+        
+        <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
+        
+        <div id="ai-explain-loading" style="display: none; text-align: center; margin-top: 20px; padding: 20px; background: rgba(168,85,247,0.05); border-radius: 8px; border: 1px dashed rgba(168,85,247,0.3);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner" style="margin-bottom:0;"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
+          <div id="ai-explain-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 8px; font-size: 0.9rem;">AIが詳細な解説を生成しています...</div>
+        </div>
+        
+        <div id="ai-explain-result">
+          <div class="ai-exp-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+            AI詳細解説
+          </div>
+          <div id="ai-explain-text"></div>
+        </div>
+      </div>
+
+      <div class="controls">
+        <button class="nav-btn secondary" id="quit-btn" onclick="quitQuiz()">中断</button>
+        <button class="nav-btn secondary" id="skip-btn" onclick="skipQuestion()">スキップ ⏭️</button>
+        <button class="nav-btn" id="next-btn" disabled>回答を選択</button>
       </div>
     </div>
 
-    <div class="controls">
-      <button class="nav-btn secondary" id="quit-btn" onclick="quitQuiz()">中断</button>
-      <button class="nav-btn secondary" id="skip-btn" onclick="skipQuestion()">スキップ ⏭️</button>
-      <button class="nav-btn" id="next-btn" disabled>回答を選択してください</button>
+    <!-- 2. 本番模試用のリストビュー -->
+    <div id="quiz-mock-view" style="display: none;">
+      <div id="mock-status-bar">
+        本番模試モード: 現在 <span id="mock-answered-count" class="mock-count">0</span> / 25問 選択中
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-top: 4px;">※全35問の中から、解答する25問を選んでください。</div>
+      </div>
+      
+      <!-- 35問のリストがここに追加される -->
+      <div id="mock-q-list"></div>
+
+      <div class="mock-submit-area">
+        <button class="nav-btn secondary" onclick="quitQuiz()">中断して戻る</button>
+        <button class="nav-btn" id="mock-submit-btn" disabled style="background-color: var(--border); color: var(--text-muted);" onclick="submitMockExam()">25問選択してください</button>
+      </div>
     </div>
   </div>
 
@@ -640,18 +579,11 @@
   let isAiMode = false; 
   let isMockMode = false; 
   let mockAnsweredCount = 0; 
-
-  // ゲームフィケーション用変数の追加
   let currentCombo = 0;
 
-  // ユーザーメモリ構造の更新
   let userMemory = {
-    theme: 'light',
-    gameMode: false,
-    stats: { total: 0, correct: 0 },
-    history: {},
-    exp: 0,    
-    level: 1   
+    theme: 'light', gameMode: false, stats: { total: 0, correct: 0 },
+    history: {}, exp: 0, level: 1   
   };
   
   window.onload = async () => {
@@ -659,7 +591,6 @@
       await loadExcelData();
       finishInit();
     } catch (error) {
-      console.warn("自動読み込み失敗:", error);
       document.getElementById('loading-content').style.display = 'none';
       document.getElementById('upload-content').style.display = 'block';
     }
@@ -667,1477 +598,569 @@
 
   function finishInit() {
     loadUserData();
-    
-    // データ互換性のための初期化
     if (userMemory.exp === undefined) userMemory.exp = 0;
     if (userMemory.level === undefined) userMemory.level = 1;
     if (userMemory.gameMode === undefined) userMemory.gameMode = false;
 
-    initApp();
-    applyTheme(); 
-    applyGameMode();
-    updateMemoryUI(); 
-    loadApiKey();
+    initApp(); applyTheme(); applyGameMode(); updateMemoryUI(); loadApiKey();
     switchScreen('screen-start');
   }
 
-  // --- ゲームモード関連の関数 ---
+  /* --- Game Mode & UI Logic --- */
   function applyGameMode() {
     const btn = document.getElementById('game-mode-btn');
     if (userMemory.gameMode) {
       document.body.setAttribute('data-game-mode', 'true');
-      btn.setAttribute('data-active', 'true');
-      btn.style.background = 'var(--primary)';
-      btn.style.color = 'white';
-      btn.style.borderColor = 'var(--primary)';
+      btn.style.background = 'var(--primary)'; btn.style.color = 'white';
       updateDashboardUI();
     } else {
       document.body.removeAttribute('data-game-mode');
-      btn.removeAttribute('data-active');
-      btn.style.background = '';
-      btn.style.color = '';
-      btn.style.borderColor = '';
+      btn.style.background = ''; btn.style.color = '';
     }
   }
 
   window.toggleGameMode = function() {
     userMemory.gameMode = !userMemory.gameMode;
-    applyGameMode();
-    saveUserData(); 
+    applyGameMode(); saveUserData(); 
   };
-
 
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
     if (key) {
       localStorage.setItem('my_gemini_api_key', key);
       const statusEl = document.getElementById('api-key-status');
-      statusEl.textContent = "✅ ブラウザに安全に保存しました！";
-      statusEl.style.color = "var(--success-text)";
-      setTimeout(() => {
-        statusEl.textContent = "※APIキーはあなたの端末内（ブラウザ）にのみ安全に保存されます。";
-        statusEl.style.color = "var(--text-muted)";
-      }, 3000);
-    } else {
-      alert("APIキーを入力してください。");
+      statusEl.textContent = "✅ 保存しました！"; statusEl.style.color = "var(--success-text)";
+      setTimeout(() => { statusEl.textContent = "※APIキーはブラウザにのみ安全に保存されます。"; statusEl.style.color = "var(--text-muted)"; }, 3000);
     }
   };
 
   function loadApiKey() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
-    if (savedKey) {
-      document.getElementById('api-key-input').value = savedKey;
-    }
+    if (savedKey) document.getElementById('api-key-input').value = savedKey;
   }
 
   window.resetHistory = function() {
-    if (confirm("本当に学習記録をすべてリセットしますか？\n（総解答数、正解数、問題ごとの正誤履歴、経験値、レベルが消去されます）\n※この操作は取り消せません。")) {
+    if (confirm("学習記録をすべてリセットしますか？\n（総解答数、正誤履歴、経験値、レベルが消去されます）")) {
       userMemory.stats = { total: 0, correct: 0 };
-      userMemory.history = {};
-      userMemory.exp = 0;
-      userMemory.level = 1;
-      saveUserData();
-      updateMemoryUI(); 
-      updateFilterUI(); 
-      alert("学習記録をリセットしました。");
+      userMemory.history = {}; userMemory.exp = 0; userMemory.level = 1;
+      saveUserData(); updateMemoryUI(); updateFilterUI(); alert("リセットしました。");
     }
   };
 
   function loadUserData() {
-    try {
-      const savedData = localStorage.getItem('app_memory');
-      if (savedData) {
-        userMemory = JSON.parse(savedData);
-      }
-    } catch (e) {
-      console.error("メモリの読み込みエラー", e);
-    }
+    try { const d = localStorage.getItem('app_memory'); if(d) userMemory = JSON.parse(d); } catch(e){}
   }
-
   function saveUserData() {
-    try {
-      localStorage.setItem('app_memory', JSON.stringify(userMemory));
-    } catch (e) {
-      console.error("メモリの保存エラー", e);
-    }
+    try { localStorage.setItem('app_memory', JSON.stringify(userMemory)); } catch(e){}
   }
 
   function applyTheme() {
     const btn = document.getElementById('theme-btn');
     if (userMemory.theme === 'dark') {
-      document.body.setAttribute('data-theme', 'dark');
-      btn.textContent = '☀️';
+      document.body.setAttribute('data-theme', 'dark'); btn.textContent = '☀️';
     } else {
-      document.body.removeAttribute('data-theme');
-      btn.textContent = '🌙';
+      document.body.removeAttribute('data-theme'); btn.textContent = '🌙';
     }
     updateChartsTheme();
   }
-
-  window.toggleTheme = function() {
-    userMemory.theme = userMemory.theme === 'dark' ? 'light' : 'dark';
-    applyTheme();
-    saveUserData(); 
-  };
+  window.toggleTheme = function() { userMemory.theme = userMemory.theme === 'dark' ? 'light' : 'dark'; applyTheme(); saveUserData(); };
 
   function getChartColors() {
-    const isDarkMode = userMemory.theme === 'dark';
+    const isDark = userMemory.theme === 'dark';
     return {
-      textColor: isDarkMode ? '#94a3b8' : '#64748b',
-      gridColor: isDarkMode ? '#334155' : '#e2e8f0',
-      bgColor: isDarkMode ? 'rgba(99, 102, 241, 0.2)' : 'rgba(67, 56, 202, 0.2)',
-      borderColor: isDarkMode ? '#818cf8' : '#4338ca'
+      textColor: isDark ? '#94a3b8' : '#64748b', gridColor: isDark ? '#334155' : '#e2e8f0',
+      bgColor: isDark ? 'rgba(99, 102, 241, 0.2)' : 'rgba(67, 56, 202, 0.2)', borderColor: isDark ? '#818cf8' : '#4338ca'
     };
   }
 
   function drawRadarChart() {
     const ctx = document.getElementById('radarChart').getContext('2d');
-    
-    const genreStats = {};
-    masterGenres.forEach(g => {
-        genreStats[g] = { total: 0, correct: 0 };
-    });
-
+    const genreStats = {}; masterGenres.forEach(g => genreStats[g] = { t: 0, c: 0 });
     allQuestions.forEach(q => {
         if (q.genre && userMemory.history[q.id]) {
             const h = userMemory.history[q.id];
-            genreStats[q.genre].total += (h.c + h.w);
-            genreStats[q.genre].correct += h.c;
+            genreStats[q.genre].t += (h.c + h.w); genreStats[q.genre].c += h.c;
         }
     });
-
-    const labels = [];
-    const data = [];
-
+    const labels = [], data = [];
     masterGenres.forEach(g => {
-        let shortName = g;
-        if(g.length > 8) shortName = g.substring(0, 8) + '...';
-        labels.push(shortName);
-
-        const stats = genreStats[g];
-        if (stats.total > 0) {
-            data.push(Math.round((stats.correct / stats.total) * 100));
-        } else {
-            data.push(0); 
-        }
+        labels.push(g.length > 8 ? g.substring(0, 8) + '...' : g);
+        const s = genreStats[g];
+        data.push(s.t > 0 ? Math.round((s.c / s.t) * 100) : 0);
     });
-
     const colors = getChartColors();
-
-    if (radarChartInstance) {
-        radarChartInstance.destroy();
-    }
-
+    if (radarChartInstance) radarChartInstance.destroy();
     radarChartInstance = new Chart(ctx, {
         type: 'radar',
         data: {
             labels: labels,
-            datasets: [{
-                label: '分野別正答率 (%)',
-                data: data,
-                backgroundColor: colors.bgColor,
-                borderColor: colors.borderColor,
-                pointBackgroundColor: colors.borderColor,
-                pointBorderColor: '#fff',
-                pointHoverBackgroundColor: '#fff',
-                pointHoverBorderColor: colors.borderColor,
-                borderWidth: 2
-            }]
+            datasets: [{ label: '正答率(%)', data: data, backgroundColor: colors.bgColor, borderColor: colors.borderColor, pointBackgroundColor: colors.borderColor, borderWidth: 2 }]
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                r: {
-                    angleLines: { color: colors.gridColor },
-                    grid: { color: colors.gridColor },
-                    pointLabels: {
-                        color: colors.textColor,
-                        font: { size: 10, family: "'Inter', sans-serif" }
-                    },
-                    ticks: {
-                        color: colors.textColor,
-                        backdropColor: 'transparent',
-                        stepSize: 25,
-                        min: 0,
-                        max: 100,
-                        display: false 
-                    }
-                }
-            },
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return ` 正答率: ${context.parsed.r}%`;
-                        }
-                    }
-                }
-            }
-        }
+        options: { responsive: true, maintainAspectRatio: false, scales: { r: { angleLines: { color: colors.gridColor }, grid: { color: colors.gridColor }, pointLabels: { color: colors.textColor, font: { size: 10 } }, ticks: { display: false, min: 0, max: 100 } } }, plugins: { legend: { display: false } } }
     });
   }
-
-  function updateChartsTheme() {
-      if (radarChartInstance) {
-          drawRadarChart(); 
-      }
-  }
+  function updateChartsTheme() { if (radarChartInstance) drawRadarChart(); }
 
   function updateMemoryUI() {
     const s = userMemory.stats;
     document.getElementById('ms-total').textContent = s.total;
     document.getElementById('ms-correct').textContent = s.correct;
-    const rate = s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0;
-    document.getElementById('ms-rate').textContent = `${rate}%`;
-    
-    // サマリー側のレベルとEXPを更新
-    const msLevelEl = document.getElementById('ms-level');
-    const msExpTextEl = document.getElementById('ms-exp-text');
-    const msExpBarEl = document.getElementById('ms-exp-bar');
-    
-    if (msLevelEl && msExpTextEl && msExpBarEl) {
+    document.getElementById('ms-rate').textContent = s.total > 0 ? `${Math.round((s.correct / s.total) * 100)}%` : '0%';
+    const msLevelEl = document.getElementById('ms-level'), msExpTextEl = document.getElementById('ms-exp-text'), msExpBarEl = document.getElementById('ms-exp-bar');
+    if (msLevelEl) {
         msLevelEl.textContent = userMemory.level;
-        const nextLevelExp = userMemory.level * 500;
-        msExpTextEl.textContent = `${userMemory.exp} / ${nextLevelExp}`;
-        const expPercent = Math.min((userMemory.exp / nextLevelExp) * 100, 100);
-        msExpBarEl.style.width = `${expPercent}%`;
+        const nextExp = userMemory.level * 500;
+        msExpTextEl.textContent = `${userMemory.exp} / ${nextExp}`;
+        msExpBarEl.style.width = `${Math.min((userMemory.exp / nextExp) * 100, 100)}%`;
     }
-    
-    if (masterGenres && masterGenres.length > 0) {
-        drawRadarChart();
-    }
+    if (masterGenres.length > 0) drawRadarChart();
   }
 
   function updateDashboardUI() {
     if (!userMemory.gameMode) return;
-
-    const dashboard = document.getElementById('dashboard-panel');
-    const levelEl = document.getElementById('current-level');
-    const tachoBar = document.getElementById('tacho-bar');
-    const boostBar = document.getElementById('boost-bar');
-    
-    if(!levelEl || !dashboard) return;
-
-    const nextLevelExp = userMemory.level * 500; 
-    const expPercent = Math.min((userMemory.exp / nextLevelExp) * 100, 100);
-    
-    const boostPercent = Math.min((currentCombo / 5) * 100, 100);
-
-    levelEl.textContent = userMemory.level;
-    tachoBar.style.width = `${expPercent}%`;
-    boostBar.style.width = `${boostPercent}%`;
-
-    if (currentCombo >= 5) {
-      dashboard.classList.add('overboost-active');
-    } else {
-      dashboard.classList.remove('overboost-active');
-    }
+    const db = document.getElementById('dashboard-panel'), l = document.getElementById('current-level'), tb = document.getElementById('tacho-bar'), bb = document.getElementById('boost-bar');
+    if(!l || !db) return;
+    l.textContent = userMemory.level;
+    tb.style.width = `${Math.min((userMemory.exp / (userMemory.level * 500)) * 100, 100)}%`;
+    bb.style.width = `${Math.min((currentCombo / 5) * 100, 100)}%`;
+    currentCombo >= 5 ? db.classList.add('overboost-active') : db.classList.remove('overboost-active');
   }
 
-  function showExpPopup(gainedExp) {
+  function showExpPopup(exp) {
     if (!userMemory.gameMode) return;
-
-    const dashboard = document.getElementById('dashboard-panel');
-    if (!dashboard) return;
-
-    const popup = document.createElement('div');
-    popup.className = 'exp-popup';
-    popup.textContent = `+${gainedExp}`;
-    
-    const randomX = Math.floor(Math.random() * 100) + 50; 
-    popup.style.left = `${randomX}px`;
-    popup.style.top = '10px';
-
-    dashboard.appendChild(popup);
-
-    setTimeout(() => {
-      if (popup.parentNode) popup.parentNode.removeChild(popup);
-    }, 1000);
+    const db = document.getElementById('dashboard-panel'); if (!db) return;
+    const p = document.createElement('div'); p.className = 'exp-popup'; p.textContent = `+${exp}`;
+    p.style.left = `${Math.floor(Math.random() * 100) + 50}px`; p.style.top = '10px';
+    db.appendChild(p); setTimeout(() => { if (p.parentNode) p.parentNode.removeChild(p); }, 1000);
   }
 
-  function showGearUpAnimation(newLevel) {
+  function showGearUpAnimation(lvl) {
     if (!userMemory.gameMode) return;
-
-    const overlay = document.getElementById('gear-up-overlay');
-    const levelText = document.getElementById('gear-up-level');
-    
-    levelText.textContent = `GEAR ${newLevel}`;
-    overlay.style.display = 'flex';
-    overlay.style.animation = 'none'; 
-    void overlay.offsetWidth; 
-    
-    overlay.style.animation = 'gear-up-flash 2s forwards ease-in-out';
-    
-    setTimeout(() => {
-      overlay.style.display = 'none';
-    }, 2000);
+    const o = document.getElementById('gear-up-overlay');
+    document.getElementById('gear-up-level').textContent = `GEAR ${lvl}`;
+    o.style.display = 'flex'; o.style.animation = 'none'; void o.offsetWidth; 
+    o.style.animation = 'gear-up-flash 2s forwards ease-in-out';
+    setTimeout(() => { o.style.display = 'none'; }, 2000);
   }
 
   function processGameLogic(isCorrect) {
-    if (!userMemory.gameMode) {
-      currentCombo = 0;
-      return;
-    }
-
-    const dashboard = document.getElementById('dashboard-panel');
-    
+    if (!userMemory.gameMode) { currentCombo = 0; return; }
+    const db = document.getElementById('dashboard-panel');
     if (isCorrect) {
-      const wasOverboost = currentCombo >= 5;
-      currentCombo++;
-      
-      const baseExp = (currentCombo > 5 || wasOverboost) ? 200 : 100;
-      const bonusExp = Math.min(currentCombo, 5) * 20; 
-      
-      const totalGained = baseExp + bonusExp;
-      userMemory.exp += totalGained;
-      
-      showExpPopup(totalGained);
-
-      const nextLevelExp = userMemory.level * 500;
-      if (userMemory.exp >= nextLevelExp) {
-        userMemory.level++;
-        userMemory.exp -= nextLevelExp; 
-        setTimeout(() => {
-          showGearUpAnimation(userMemory.level);
-        }, 500);
+      const wasOb = currentCombo >= 5; currentCombo++;
+      const gained = (wasOb || currentCombo > 5 ? 200 : 100) + (Math.min(currentCombo, 5) * 20);
+      userMemory.exp += gained; showExpPopup(gained);
+      const nextExp = userMemory.level * 500;
+      if (userMemory.exp >= nextExp) {
+        userMemory.level++; userMemory.exp -= nextExp; 
+        setTimeout(() => showGearUpAnimation(userMemory.level), 500);
       }
     } else {
       currentCombo = 0;
-      if(dashboard) {
-        dashboard.classList.remove('overboost-active');
-        dashboard.classList.add('misfire');
-        setTimeout(() => dashboard.classList.remove('misfire'), 300);
-      }
+      if(db) { db.classList.remove('overboost-active'); db.classList.add('misfire'); setTimeout(() => db.classList.remove('misfire'), 300); }
     }
-    
     updateDashboardUI();
   }
 
+  /* --- Data Loading --- */
   async function loadExcelData() {
-    const timestamp = new Date().getTime();
-    const response = await fetch(`${EXCEL_FILE_NAME}?t=${timestamp}`);
-    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
-    const arrayBuffer = await response.arrayBuffer();
-    processExcelArrayBuffer(arrayBuffer);
+    const res = await fetch(`${EXCEL_FILE_NAME}?t=${Date.now()}`);
+    if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
+    processExcelArrayBuffer(await res.arrayBuffer());
   }
-
-  window.handleManualUpload = function(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      try {
-        processExcelArrayBuffer(e.target.result);
-        finishInit();
-      } catch (error) {
-        alert("エクセルの解析に失敗しました: " + error.message);
-      }
-    };
-    reader.readAsArrayBuffer(file);
+  window.handleManualUpload = function(e) {
+    const f = e.target.files[0]; if (!f) return;
+    const r = new FileReader();
+    r.onload = function(e) { try { processExcelArrayBuffer(e.target.result); finishInit(); } catch (err) { alert("解析失敗: " + err.message); } };
+    r.readAsArrayBuffer(f);
   };
-
-  function processExcelArrayBuffer(arrayBuffer) {
-    const workbook = XLSX.read(arrayBuffer, {type: "array"});
-    const worksheet = workbook.Sheets[SHEET_NAME];
-    
-    if (!worksheet) throw new Error(`シート「${SHEET_NAME}」が見つかりません。`);
-    
-    const data = XLSX.utils.sheet_to_json(worksheet, {defval: ""});
-
-    allQuestions = data.map((row, index) => {
-      let yearStr = String(row['年度'] || '').trim();
-      let yearNum = 0;
-      const rMatch = yearStr.match(/令和([0-9元]+)/);
-      if (rMatch) {
-          yearNum = rMatch[1] === '元' ? 1 : parseInt(rMatch[1]);
-          yearNum += 2018; 
-      } else {
-          const hMatch = yearStr.match(/平成([0-9]+)/);
-          if (hMatch) {
-              yearNum = parseInt(hMatch[1]) + 1988; 
-          } else {
-              const numMatch = yearStr.match(/[0-9]{4}/);
-              if(numMatch) yearNum = parseInt(numMatch[0]);
-          }
-      }
-
-      const block = String(row['大分類(ブロック)'] || '').trim();
-      const sub = String(row['サブジャンル'] || '').trim();
-      const qNumStr = String(row['設問番号'] || `Q${index+1}`).trim();
-      
-      const options = [];
-      for(let i=1; i<=5; i++){
-        const key = `選択肢${String.fromCharCode(0x2460 + i - 1)}`;
-        const opt = String(row[key] || '').trim();
-        if(opt) options.push(opt);
-      }
-      
-      let rawAns = String(row['公式正答'] || '').trim();
-      rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
-      
-      let ansIdx = 0;
-      const ansMatch = rawAns.match(/\d+/);
-      if (ansMatch) {
-          ansIdx = parseInt(ansMatch[0], 10) - 1;
-      }
-      
-      const theme = String(row['問題のテーマ・内容概要'] || '').trim();
-      const exp = theme ? `【テーマ・内容概要】\n${theme}` : "【解説】\n詳細な解説はありません。";
-      
-      const imgName = String(row['画像ファイル名'] || row['画像URL'] || '').trim();
-      
+  function processExcelArrayBuffer(ab) {
+    const wb = XLSX.read(ab, {type: "array"}), ws = wb.Sheets[SHEET_NAME];
+    if (!ws) throw new Error(`シート無し`);
+    allQuestions = XLSX.utils.sheet_to_json(ws, {defval: ""}).map((row, i) => {
+      let ys = String(row['年度'] || '').trim(), yn = 0;
+      const rM = ys.match(/令和([0-9元]+)/);
+      if (rM) yn = (rM[1] === '元' ? 1 : parseInt(rM[1])) + 2018; 
+      else { const hM = ys.match(/平成([0-9]+)/); if (hM) yn = parseInt(hM[1]) + 1988; }
+      const opts = []; for(let j=1; j<=5; j++){ const o = String(row[`選択肢${String.fromCharCode(0x2460+j-1)}`] || '').trim(); if(o) opts.push(o); }
+      let ansM = String(row['公式正答'] || '').replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).match(/\d+/);
       return {
-        id: `${yearStr}_${qNumStr}`, 
-        year: yearStr,
-        yearNum: yearNum,
-        qNum: qNumStr,
-        genre: block,
-        subgenre: sub,
-        question: String(row['問題文'] || '').trim(),
-        options: options,
-        answer: ansIdx,
-        explanation: exp,
-        imageUrl: imgName 
+        id: `${ys}_${String(row['設問番号'] || `Q${i+1}`).trim()}`, year: ys, yearNum: yn, qNum: String(row['設問番号'] || `Q${i+1}`).trim(),
+        genre: String(row['大分類(ブロック)'] || '').trim(), subgenre: String(row['サブジャンル'] || '').trim(),
+        question: String(row['問題文'] || '').trim(), options: opts, answer: ansM ? parseInt(ansM[0], 10) - 1 : -1,
+        explanation: row['問題のテーマ・内容概要'] ? `【テーマ・内容概要】\n${String(row['問題のテーマ・内容概要']).trim()}` : "【解説】\n詳細な解説はありません。",
+        imageUrl: String(row['画像ファイル名'] || row['画像URL'] || '').trim() 
       };
     }).filter(q => q.question !== "");
   }
 
-  function getYearWeight(diff) {
-      if (diff === 0) return 10;
-      if (diff === 1) return 7;
-      if (diff === 2) return 5;
-      if (diff === 3) return 3;
-      if (diff === 4) return 2;
-      return 1;
-  }
-
   function initApp() {
-    const ySet = new Set();
-    const gSet = new Set();
-    const subgenreYears = {};
-
+    const ys = new Set(), gs = new Set(), sy = {};
     allQuestions.forEach(q => {
-      if(q.year) ySet.add(q.year);
-      if(q.genre) {
-        gSet.add(q.genre);
-        if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set();
-        if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre);
-      }
-      if(q.subgenre && q.yearNum > 0) {
-          if(!subgenreYears[q.subgenre]) subgenreYears[q.subgenre] = [];
-          subgenreYears[q.subgenre].push(q.yearNum);
-      }
+      if(q.year) ys.add(q.year);
+      if(q.genre) { gs.add(q.genre); if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set(); if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre); }
+      if(q.subgenre && q.yearNum > 0) { if(!sy[q.subgenre]) sy[q.subgenre] = []; sy[q.subgenre].push(q.yearNum); }
     });
-
-    let maxYearNum = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
-    let rawScores = {};
-    
-    Object.keys(subgenreYears).forEach(sub => {
-        let score = 0;
-        subgenreYears[sub].forEach(y => {
-            let diff = maxYearNum - y;
-            score += getYearWeight(diff); 
-        });
-        rawScores[sub] = score;
-    });
-
-    let maxRawScore = Math.max(...Object.values(rawScores));
-    if (maxRawScore === 0) maxRawScore = 1;
-
-    Object.keys(rawScores).forEach(sub => {
-        let score = rawScores[sub];
-        let ratio = score / maxRawScore;
-        
-        let level = 1;
-        if (ratio >= 0.8) level = 5;
-        else if (ratio >= 0.6) level = 4;
-        else if (ratio >= 0.4) level = 3;
-        else if (ratio >= 0.2) level = 2;
-        
-        subgenreTrendScores[sub] = { raw: score, level: level };
-    });
-
-    const sortedQuestionsByYear = [...allQuestions].sort((a, b) => b.yearNum - a.yearNum);
-    masterYears = Array.from(new Set(sortedQuestionsByYear.map(q => q.year))).filter(y => y);
-    masterGenres = Array.from(gSet).sort();
-
-    buildInitialFilterSelects();
+    let mxY = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
+    let rs = {}; Object.keys(sy).forEach(sub => { rs[sub] = sy[sub].reduce((s, y) => s + (y === mxY?10:y===mxY-1?7:y===mxY-2?5:y===mxY-3?3:y===mxY-4?2:1), 0); });
+    let mxR = Math.max(...Object.values(rs)) || 1;
+    Object.keys(rs).forEach(sub => { let rt = rs[sub]/mxR; subgenreTrendScores[sub] = { raw: rs[sub], level: rt>=0.8?5:rt>=0.6?4:rt>=0.4?3:rt>=0.2?2:1 }; });
+    masterYears = Array.from(new Set([...allQuestions].sort((a, b) => b.yearNum - a.yearNum).map(q => q.year))).filter(y => y);
+    masterGenres = Array.from(gs).sort();
+    document.getElementById('year-filter').innerHTML = '<option value="all">すべての年度</option>'; masterYears.forEach(y => document.getElementById('year-filter').add(new Option(y, y)));
+    document.getElementById('genre-filter').innerHTML = '<option value="all">すべての大分類</option>'; masterGenres.forEach(g => document.getElementById('genre-filter').add(new Option(g, g)));
     updateFilterUI();
   }
 
-  function buildInitialFilterSelects() {
-    const ySelect = document.getElementById('year-filter');
-    ySelect.innerHTML = '<option value="all">すべての年度</option>';
-    masterYears.forEach(y => ySelect.add(new Option(y, y)));
-
-    const gSelect = document.getElementById('genre-filter');
-    gSelect.innerHTML = '<option value="all">すべての大分類</option>';
-    masterGenres.forEach(g => gSelect.add(new Option(g, g)));
-  }
-
   window.updateFilterUI = function() {
-    const ySelect = document.getElementById('year-filter');
-    const gSelect = document.getElementById('genre-filter');
-    const sSelect = document.getElementById('subgenre-filter');
-    const mSelect = document.getElementById('memory-filter');
-    
-    const currentYear = ySelect.value;
-    const currentGenre = gSelect.value;
-    let currentSubgenre = sSelect.value || 'all'; 
-    const currentMemory = mSelect.value;
-    const currentKeyword = document.getElementById('keyword-filter').value.toLowerCase().trim();
-
-    sSelect.innerHTML = '<option value="all">すべての小分類</option>';
-    let availableSubgenres = new Set();
-    if (currentGenre === 'all') {
-      Object.values(genreToSubgenres).forEach(set => set.forEach(s => availableSubgenres.add(s)));
-    } else {
-      availableSubgenres = genreToSubgenres[currentGenre] || new Set();
-    }
-    Array.from(availableSubgenres).sort().forEach(s => sSelect.add(new Option(s, s)));
-    
-    if (Array.from(availableSubgenres).includes(currentSubgenre)) {
-      sSelect.value = currentSubgenre;
-    } else {
-      sSelect.value = 'all'; currentSubgenre = 'all';
-    }
-
-    const fKw = (q) => currentKeyword === '' || 
-                       q.question.toLowerCase().includes(currentKeyword) || 
-                       q.explanation.toLowerCase().includes(currentKeyword) || 
-                       q.options.some(o => o.toLowerCase().includes(currentKeyword));
-    const fY = (q, y) => y === 'all' || q.year === y;
-    const fG = (q, g) => g === 'all' || q.genre === g;
-    const fS = (q, s) => s === 'all' || q.subgenre === s;
-    
-    const fMem = (q) => {
-      if (currentMemory === 'all') return true;
-      const h = userMemory.history[q.id];
-      if (currentMemory === 'unanswered') return !h || (h.c === 0 && h.w === 0);
-      if (currentMemory === 'wrong') return h && h.w > 0;
-      if (currentMemory === 'perfect') return h && h.c > 0 && h.w === 0;
-      return true;
-    };
-
-    const baseForY = allQuestions.filter(q => fG(q, currentGenre) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
-    const countsY = {}; baseForY.forEach(q => { countsY[q.year] = (countsY[q.year] || 0) + 1; });
-    ySelect.options[0].text = `すべての年度 (${baseForY.length}問)`;
-    for (let i = 1; i < ySelect.options.length; i++) {
-      const val = ySelect.options[i].value; const c = countsY[val] || 0;
-      ySelect.options[i].text = `${val} (${c}問)`; ySelect.options[i].disabled = (c === 0);
-    }
-
-    const baseForG = allQuestions.filter(q => fY(q, currentYear) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
-    const countsG = {}; baseForG.forEach(q => { countsG[q.genre] = (countsG[q.genre] || 0) + 1; });
-    gSelect.options[0].text = `すべての大分類 (${baseForG.length}問)`;
-    for (let i = 1; i < gSelect.options.length; i++) {
-      const val = gSelect.options[i].value; const c = countsG[val] || 0;
-      gSelect.options[i].text = `${val} (${c}問)`; gSelect.options[i].disabled = (c === 0);
-    }
-
-    const baseForS = allQuestions.filter(q => fY(q, currentYear) && fG(q, currentGenre) && fKw(q) && fMem(q));
-    const countsS = {}; baseForS.forEach(q => { countsS[q.subgenre] = (countsS[q.subgenre] || 0) + 1; });
-    sSelect.options[0].text = `すべての小分類 (${baseForS.length}問)`;
-    for (let i = 1; i < sSelect.options.length; i++) {
-      const val = sSelect.options[i].value; const c = countsS[val] || 0;
-      sSelect.options[i].text = `${val} (${c}問)`; sSelect.options[i].disabled = (c === 0);
-    }
-
-    currentTargetQuestions = allQuestions.filter(q => fY(q, currentYear) && fG(q, currentGenre) && fS(q, currentSubgenre) && fKw(q) && fMem(q));
-    
-    const countEl = document.getElementById('target-count');
-    const startBtn = document.getElementById('start-btn');
-    
-    if (currentTargetQuestions.length === 0) {
-      countEl.textContent = '条件に一致する問題がありません';
-      countEl.style.background = 'var(--danger-bg)';
-      countEl.style.color = 'var(--danger-text)';
-      startBtn.disabled = true;
-      startBtn.textContent = '対象問題がありません';
-    } else {
-      countEl.textContent = `出題対象: ${currentTargetQuestions.length} 問`;
-      countEl.style.background = 'var(--info-bg)';
-      countEl.style.color = 'var(--primary)';
-      startBtn.disabled = false;
-      startBtn.textContent = '過去問演習を開始する';
-    }
+    const ySel = document.getElementById('year-filter'), gSel = document.getElementById('genre-filter'), sSel = document.getElementById('subgenre-filter');
+    let cg = gSel.value, cs = sSel.value || 'all', kw = document.getElementById('keyword-filter').value.toLowerCase().trim(), m = document.getElementById('memory-filter').value;
+    sSel.innerHTML = '<option value="all">すべての小分類</option>';
+    let avS = new Set(); if (cg === 'all') Object.values(genreToSubgenres).forEach(s => s.forEach(x => avS.add(x))); else avS = genreToSubgenres[cg] || new Set();
+    Array.from(avS).sort().forEach(s => sSel.add(new Option(s, s)));
+    if (Array.from(avS).includes(cs)) sSel.value = cs; else { sSel.value = 'all'; cs = 'all'; }
+    const fKw=q=>kw===''||q.question.toLowerCase().includes(kw)||q.explanation.toLowerCase().includes(kw)||q.options.some(o=>o.toLowerCase().includes(kw));
+    const fM=q=>{ if(m==='all')return true; const h=userMemory.history[q.id]; if(m==='unanswered')return !h||(h.c===0&&h.w===0); if(m==='wrong')return h&&h.w>0; return h&&h.c>0&&h.w===0; };
+    currentTargetQuestions = allQuestions.filter(q => (ySel.value==='all'||q.year===ySel.value) && (cg==='all'||q.genre===cg) && (cs==='all'||q.subgenre===cs) && fKw(q) && fM(q));
+    const cEl = document.getElementById('target-count'), sb = document.getElementById('start-btn');
+    if (currentTargetQuestions.length === 0) { cEl.textContent = '条件に一致なし'; cEl.style.background = 'var(--danger-bg)'; cEl.style.color = 'var(--danger-text)'; sb.disabled = true; sb.textContent = '対象問題なし'; }
+    else { cEl.textContent = `出題対象: ${currentTargetQuestions.length} 問`; cEl.style.background = 'var(--info-bg)'; cEl.style.color = 'var(--primary)'; sb.disabled = false; sb.textContent = '過去問演習を開始'; }
   };
 
-  function getWeightedRandomQuestions(pool, count) {
-    if (count >= pool.length) return shuffleArray([...pool]);
+  function switchScreen(id) { document.querySelectorAll('.screen').forEach(e => e.classList.remove('active')); document.getElementById(id).classList.add('active'); }
+  function shuffle(a) { for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];} return a; }
 
-    let weightedPool = pool.map(q => {
-      let scoreObj = subgenreTrendScores[q.subgenre];
-      let weight = scoreObj ? scoreObj.raw : 1;
-      return { q: q, weight: weight };
-    });
+  /* --- HTML/Markdown Helpers --- */
+  function escapeHtml(str) { return String(str||'').replace(/[&<>"'`=\/]/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;','/':'&#x2F;','`':'&#x60;','=':'&#x3D;'}[s])); }
+  function renderMath(el) { if(window.renderMathInElement) { renderMathInElement(el, { delimiters: [{left:'$$', right:'$$', display:true}, {left:'$', right:'$', display:false}], throwOnError: false }); } }
 
-    let selected = [];
-    for (let i = 0; i < count; i++) {
-      let totalWeight = weightedPool.reduce((sum, item) => sum + item.weight, 0);
-      let randomVal = Math.random() * totalWeight;
-      let currentWeight = 0;
-      
-      for (let j = 0; j < weightedPool.length; j++) {
-        currentWeight += weightedPool[j].weight;
-        if (randomVal <= currentWeight) {
-          selected.push(weightedPool[j].q);
-          weightedPool.splice(j, 1); 
-          break;
-        }
-      }
-    }
-    return selected;
-  }
-
-  function shuffleArray(array) {
-    for (let i = array.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [array[i], array[j]] = [array[j], array[i]];
-    }
-    return array;
-  }
-
-  function switchScreen(screenId) {
-    document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
-    document.getElementById(screenId).classList.add('active');
-  }
-
+  /* === Modes Start Logic === */
   window.startQuiz = function() {
-    if (currentTargetQuestions.length === 0) return;
-    isAiMode = false;
-    isMockMode = false;
-    document.getElementById('mock-status-bar').style.display = 'none';
-
-    let questionsPool = [...currentTargetQuestions];
-    const orderType = document.getElementById('order-filter').value;
-    const selectedCountStr = document.getElementById('count-filter').value;
-    const selectedCount = selectedCountStr === 'all' ? questionsPool.length : parseInt(selectedCountStr, 10);
-    
-    if (orderType === 'trend') {
-      filteredQuestions = getWeightedRandomQuestions(questionsPool, selectedCount);
-    } else if (orderType === 'random') {
-      shuffleArray(questionsPool);
-      filteredQuestions = questionsPool.slice(0, selectedCount);
+    isAiMode = false; isMockMode = false;
+    let pool = [...currentTargetQuestions], ord = document.getElementById('order-filter').value, c = document.getElementById('count-filter').value;
+    let max = c === 'all' ? pool.length : parseInt(c, 10);
+    if (ord === 'trend') {
+        let wp = pool.map(q => ({q, w: (subgenreTrendScores[q.subgenre]?.raw || 1)}));
+        filteredQuestions = [];
+        for(let i=0; i<Math.min(max, pool.length); i++){
+            let r=Math.random()*wp.reduce((s,x)=>s+x.w,0), cw=0;
+            for(let j=0; j<wp.length; j++){ cw+=wp[j].w; if(r<=cw){ filteredQuestions.push(wp[j].q); wp.splice(j,1); break; } }
+        }
     } else {
-      filteredQuestions = questionsPool.slice(0, selectedCount);
+        if (ord === 'random') shuffle(pool);
+        filteredQuestions = pool.slice(0, max);
     }
-
-    sessionAnswers = {};
-    curIdx = 0;
-    
-    currentCombo = 0;
-    if (userMemory.gameMode) updateDashboardUI();
-    
-    document.getElementById('ai-loading').style.display = 'none';
-    document.getElementById('q-text').style.display = 'block';
-    document.getElementById('opt-box').style.display = 'flex';
-    document.getElementById('q-source').style.display = 'inline-flex';
-    
-    switchScreen('screen-quiz');
-    renderQuestion();
+    sessionAnswers = {}; curIdx = 0; currentCombo = 0;
+    setupScreenForMode('single'); renderQuestionSingle();
   };
 
-  // ----------------------------------------------------
-  // 本番模試モードの実装 (安定化版: チャンク分割＆再試行)
-  // ----------------------------------------------------
-  window.startMockExam = async function() {
-    const savedKey = localStorage.getItem('my_gemini_api_key');
-    if (!savedKey) {
-      alert("腕試しモードを使用するには、スタート画面の設定エリアに「Gemini APIキー」を入力して保存してください。（AIが新規問題を作成します）");
-      document.getElementById('api-key-input').focus();
-      return;
-    }
-
-    isAiMode = true;
-    isMockMode = true;
-    mockAnsweredCount = 0;
-    sessionAnswers = {};
-    filteredQuestions = [];
-    curIdx = 0;
-    
-    currentCombo = 0;
-    if (userMemory.gameMode) updateDashboardUI();
-    
-    switchScreen('screen-quiz');
-    
-    // 画面の準備
-    document.getElementById('q-text').style.display = 'none';
-    document.getElementById('q-image-container').style.display = 'none';
-    document.getElementById('opt-box').style.display = 'none';
-    document.getElementById('q-source').style.display = 'none';
-    
-    const aiLoading = document.getElementById('ai-loading');
-    aiLoading.style.display = 'block';
-    document.getElementById('ai-loading-msg').innerHTML = "AIが本番同様の配分で<br>模試問題セットを作成しています...";
-    document.getElementById('ai-loading-sub').textContent = "（進行状況: 0 / 28問 生成中）";
-
-    document.getElementById('exp-box').classList.remove('show');
-    document.getElementById('next-btn').disabled = true;
-    document.getElementById("quit-btn").textContent = "中断";
-    
-    document.getElementById('mock-status-bar').style.display = 'block';
-    document.getElementById('mock-answered-count').textContent = "0";
-
-    await generateMockExamQuestions();
-  }
-
-  // APIを叩く関数 (エラー時はLiteモデルでリトライする機能付き)
-  async function callGeminiAPI(prompt, apiKey, expectedCount, useLiteModel = false, retries = 2) {
-      const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
-      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-      
-      const payload = {
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { response_mime_type: "application/json" }
-      };
-
-      try {
-          const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-          const result = await response.json();
-          
-          if (!response.ok) {
-              // 429(Too Many Requests) や 503(Service Unavailable) の場合はフォールバック
-              if ((response.status === 429 || response.status === 503) && !useLiteModel) {
-                  console.warn(`API制限または高負荷(${response.status})。Liteモデルで再試行します...`);
-                  await new Promise(r => setTimeout(r, 2000)); // 2秒待機
-                  return await callGeminiAPI(prompt, apiKey, expectedCount, true, retries);
-              }
-              throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
+  /* --- API Caller with Fallback/Chunks --- */
+  async function callGeminiAPI(prompt, apiKey, expectedCount, useLite = false) {
+      const model = useLite ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+      const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const result = await res.json();
+      if (!res.ok) {
+          if ((res.status === 429 || res.status === 503) && !useLite) {
+              console.warn("API制限/高負荷。Liteで再試行。"); await new Promise(r => setTimeout(r, 2000));
+              return callGeminiAPI(prompt, apiKey, expectedCount, true);
           }
-          
-          const textData = result.candidates[0].content.parts[0].text;
-          const data = JSON.parse(textData);
-          if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
-          return { data: data.questions, isLite: useLiteModel };
-          
-      } catch (e) {
-          if (retries > 0) {
-              console.warn(`生成エラー。残りリトライ回数:${retries}。2秒後に再試行します。`, e);
-              await new Promise(r => setTimeout(r, 2000));
-              // もう一度同じモデル（またはすでにLiteに落ちていればLite）でリトライ
-              return await callGeminiAPI(prompt, apiKey, expectedCount, useLiteModel, retries - 1);
-          } else {
-              throw e;
-          }
+          throw new Error(`[${res.status}] ${result.error?.message || "通信エラー"}`);
       }
+      return { data: JSON.parse(result.candidates[0].content.parts[0].text).questions, isLite: useLite };
   }
 
-  async function generateMockExamQuestions() {
-    const apiKey = localStorage.getItem('my_gemini_api_key');
+  window.startAIQuiz = async function() {
+    const key = localStorage.getItem('my_gemini_api_key');
+    if (!key) return alert("APIキーを設定エリアに入力・保存してください。");
+    isAiMode = true; isMockMode = false; sessionAnswers = {}; filteredQuestions = []; curIdx = 0; currentCombo = 0;
+    setupScreenForMode('loading');
+    document.getElementById('ai-loading-msg').innerHTML = "AIが予想問題を5問生成しています...";
     
-    // AI作成内訳: 建築14, 廃棄物8, 水質6 (計28)
-    // 負荷軽減のため、一度の生成数を少なく分割する (チャンク分割)
-    const aiTasks = [
-        { genre: "建築環境・設備・建築物衛生管理", count: 7 },
-        { genre: "建築環境・設備・建築物衛生管理", count: 7 },
-        { genre: "廃棄物管理", count: 4 },
-        { genre: "廃棄物管理", count: 4 },
-        { genre: "水質管理", count: 6 }
-    ];
+    let g = document.getElementById('genre-filter').value, sg = document.getElementById('subgenre-filter').value;
+    let hint = g!=="all" ? `衛生工学部門の「${g}」分野全般${sg!=="all"?`（特に「${sg}」にフォーカス）`:""}` : "衛生工学全般";
+    let ref = (g==="all" ? allQuestions : currentTargetQuestions).map(q=>q.question).sort(()=>0.5-Math.random()).slice(0, 100).map(q=>`・${q}`).join('\n');
+    
+    const prompt = `技術士（衛生工学部門）の試験委員として、【五肢択一問題】の予想問題を「5問」JSON生成して。\nテーマ: ${hint}\n参考:\n${ref}\n\nフォーマット: {"questions": [{"question":"", "options":["","","","",""], "answer":0, "explanation":""}]}`;
+    try {
+        const res = await callGeminiAPI(prompt, key, 5);
+        res.data.forEach((q, i) => filteredQuestions.push({
+            id: `AI-${Date.now()}-${i}`, year: "AI予想", qNum: `Q${i+1}`, genre: g!=="all"?g:"AI総合", subgenre: sg!=="all"?sg:"網羅",
+            question: q.question, options: q.options, answer: q.answer, explanation: `【AI解説】${res.isLite?'(Lite)':''}\n${q.explanation}`, isAi: true
+        }));
+        setupScreenForMode('single'); renderQuestionSingle();
+    } catch(e) { alert("生成失敗:\n" + e.message); goToStart(); }
+  };
 
-    let generatedAiQs = [];
-    let completedCount = 0;
+  /* === MOCK EXAM MODE (List View) === */
+  window.startMockExam = async function() {
+    const key = localStorage.getItem('my_gemini_api_key');
+    if (!key) return alert("APIキーを設定エリアに入力・保存してください。");
+    isAiMode = true; isMockMode = true; mockAnsweredCount = 0; sessionAnswers = {}; filteredQuestions = [];
+    
+    setupScreenForMode('loading');
+    document.getElementById('ai-loading-msg').innerHTML = "本番模試(全35問)を作成しています...";
+    document.getElementById('ai-loading-sub').innerHTML = "問題が多い為、少々時間がかかります。<br>（進行状況: 0 / 28問 AI生成）";
+
+    const tasks = [ { g: "建築環境・設備・建築物衛生管理", c: 7 }, { g: "建築環境・設備・建築物衛生管理", c: 7 }, { g: "廃棄物管理", c: 4 }, { g: "廃棄物管理", c: 4 }, { g: "水質管理", c: 6 } ];
+    let aiQs = [], comp = 0;
 
     try {
-        // --- 1. AI問題の生成 (タスクごとに順次実行) ---
-        for (let i = 0; i < aiTasks.length; i++) {
-            let task = aiTasks[i];
+        for (let i=0; i<tasks.length; i++) {
+            document.getElementById('ai-loading-sub').innerHTML = `（進行状況: ${comp} / 28問 生成済み）<br><span style="font-size:0.8rem">${tasks[i].g}を作成中...</span>`;
+            let ref = shuffle(allQuestions.filter(q=>q.genre===tasks[i].g)).slice(0,30).map(q=>`・${q.question}`).join('\n');
+            const prompt = `技術士（衛生工学部門）の試験委員として、【五肢択一問題】の予想問題を「${tasks[i].c}問」JSON生成して。\n分野: ${tasks[i].g}\n参考:\n${ref}\n\nフォーマット: {"questions": [{"question":"", "options":["1","2","3","4","5"], "answer":0, "explanation":""}]}`;
             
-            // 進行状況の更新
-            document.getElementById('ai-loading-sub').innerHTML = `（進行状況: ${completedCount} / 28問 生成完了）<br><span style="font-size:0.75rem">現在 ${task.genre} の問題を作成中...</span>`;
-            
-            // 参考用の過去問を抽出
-            let refPool = allQuestions.filter(q => q.genre === task.genre).map(q => q.question);
-            let refText = shuffleArray(refPool).slice(0, 40).map(q => `・${q}`).join('\n');
-
-            const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「${task.count}問」生成してください。
-
-【対象分野】
-${task.genre}
-
-【過去の出題例（参考）】
-${refText}
-
-【指示】
-・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
-・図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
-
-以下のJSONフォーマットで出力してください。
-{
-  "questions": [
-    {
-      "question": "問題文",
-      "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
-      "answer": 0,
-      "explanation": "解説"
-    }
-  ]
-}`;
-            
-            // API呼び出し (エラー時のフォールバック処理含む)
-            const result = await callGeminiAPI(prompt, apiKey, task.count);
-            
-            result.data.forEach((q, idx) => {
-                generatedAiQs.push({
-                    id: `Mock-AI-${task.genre}-${Date.now()}-${idx}`,
-                    year: "模試 (AI新規)",
-                    qNum: "",
-                    genre: task.genre,
-                    subgenre: "総合",
-                    question: q.question,
-                    options: q.options,
-                    answer: q.answer,
-                    explanation: `【AI解説】${result.isLite ? ' (Liteモデル使用)' : ''}\n${q.explanation}`,
-                    imageUrl: "",
-                    isAi: true
-                });
-            });
-            
-            completedCount += task.count;
-            
-            // APIの連続呼び出し制限を避けるため、タスク間に少しディレイを入れる
-            if (i < aiTasks.length - 1) {
-                await new Promise(r => setTimeout(r, 1500));
-            }
+            const res = await callGeminiAPI(prompt, key, tasks[i].c);
+            res.data.forEach((q, idx) => aiQs.push({
+                id: `Mock-AI-${Date.now()}-${i}-${idx}`, year: "模試 (AI)", qNum: "", genre: tasks[i].g, subgenre: "総合",
+                question: q.question, options: q.options, answer: q.answer, explanation: `【AI解説】\n${q.explanation}`, isAi: true
+            }));
+            comp += tasks[i].c;
+            if(i < tasks.length-1) await new Promise(r => setTimeout(r, 1000));
         }
-
-        document.getElementById('ai-loading-sub').textContent = "（過去問とブレンドして最終調整中...）";
-
-        // --- 2. 過去問の抽出 (建築3, 廃棄物2, 水質2 = 7問) ---
-        const pastReqs = [
-            { genre: "建築環境・設備・建築物衛生管理", count: 3 },
-            { genre: "廃棄物管理", count: 2 },
-            { genre: "水質管理", count: 2 }
-        ];
-
-        let extractedPastQs = [];
-        for (let r of pastReqs) {
-            let pool = allQuestions.filter(q => q.genre === r.genre);
-            let selected = shuffleArray(pool).slice(0, r.count);
-            // 模試用フラグを付与してコピー
-            selected.forEach(q => {
-                let mockQ = {...q};
-                mockQ.isAi = false;
-                extractedPastQs.push(mockQ);
-            });
-        }
-
-        // --- 3. セットの構築 (全35問をジャンルごとに並べる) ---
-        // 実際の試験は 建築(Q1~Q17) -> 廃棄物(Q18~Q27) -> 水質(Q28~Q35) のような並び
-        let finalSet = [];
-        const genresOrder = ["建築環境・設備・建築物衛生管理", "廃棄物管理", "水質管理"];
         
-        let qIndex = 1;
-        genresOrder.forEach(g => {
-            let aiG = generatedAiQs.filter(q => q.genre === g);
-            let pastG = extractedPastQs.filter(q => q.genre === g);
-            let combined = shuffleArray([...aiG, ...pastG]);
-            
-            combined.forEach(q => {
-                q.qNum = `問 ${qIndex}`;
-                finalSet.push(q);
-                qIndex++;
-            });
+        document.getElementById('ai-loading-sub').textContent = "過去問とブレンド中...";
+        let pastReqs = [ { g: "建築環境・設備・建築物衛生管理", c: 3 }, { g: "廃棄物管理", c: 2 }, { g: "水質管理", c: 2 } ], pastQs = [];
+        pastReqs.forEach(r => shuffle(allQuestions.filter(q=>q.genre===r.g)).slice(0, r.c).forEach(q => pastQs.push({...q, isAi:false})));
+
+        let qIdx = 1;
+        ["建築環境・設備・建築物衛生管理", "廃棄物管理", "水質管理"].forEach(g => {
+            shuffle([...aiQs.filter(q=>q.genre===g), ...pastQs.filter(q=>q.genre===g)]).forEach(q => { q.qNum = `問 ${qIdx++}`; filteredQuestions.push(q); });
         });
 
-        filteredQuestions = finalSet;
+        setupScreenForMode('mock-list');
+        renderMockList();
 
-        document.getElementById('ai-loading').style.display = 'none';
-        document.getElementById('q-text').style.display = 'block';
-        document.getElementById('opt-box').style.display = 'flex';
-        document.getElementById('q-source').style.display = 'inline-flex';
-        
-        curIdx = 0;
-        renderQuestion();
+    } catch (e) { alert("模試作成失敗:\n" + e.message); goToStart(); }
+  };
 
-    } catch (e) {
-        console.error("模試作成エラー", e);
-        alert(`模試の作成に失敗しました。（サーバーが混雑しているか、API制限に達した可能性があります）\n\n時間を置いてから再度お試しください。\n【詳細】\n${e.message}`);
-        window.goToStart();
-    }
+  /* UI Setup Helper */
+  function setupScreenForMode(mode) {
+      switchScreen('screen-quiz');
+      const ld = document.getElementById('ai-loading'), sv = document.getElementById('quiz-single-view'), mv = document.getElementById('quiz-mock-view');
+      ld.style.display = mode === 'loading' ? 'block' : 'none';
+      sv.style.display = mode === 'single' ? 'block' : 'none';
+      mv.style.display = mode === 'mock-list' ? 'block' : 'none';
+      if(mode==='single' && userMemory.gameMode) updateDashboardUI();
   }
 
-
-  // ----------------------------------------------------
-  // 通常のAIモード (こちらも安定化関数を使用)
-  // ----------------------------------------------------
-  window.startAIQuiz = async function() {
-    const savedKey = localStorage.getItem('my_gemini_api_key');
-    if (!savedKey) {
-      alert("AIモードを使用するには、スタート画面の設定エリアに「Gemini APIキー」を入力して保存してください。");
-      document.getElementById('api-key-input').focus();
-      return;
-    }
-
-    isAiMode = true;
-    isMockMode = false;
-    document.getElementById('mock-status-bar').style.display = 'none';
-    sessionAnswers = {};
-    filteredQuestions = [];
-    curIdx = 0;
-    
-    currentCombo = 0;
-    if (userMemory.gameMode) updateDashboardUI();
-    
-    switchScreen('screen-quiz');
-    await generateAIQuestionsBatch();
-  }
-
-  async function generateAIQuestionsBatch() {
-    document.getElementById('q-text').style.display = 'none';
-    document.getElementById('q-image-container').style.display = 'none';
-    document.getElementById('opt-box').style.display = 'none';
-    document.getElementById('q-source').style.display = 'none';
-    document.getElementById('ai-loading').style.display = 'block';
-    
-    document.getElementById('ai-loading-msg').innerHTML = "AIが過去問DBを分析し、<br>予想問題を5問生成しています...";
-    document.getElementById('ai-loading-sub').textContent = "少々お待ちください";
-
-    document.getElementById('exp-box').classList.remove('show');
-    document.getElementById('next-btn').disabled = true;
-    document.getElementById("quit-btn").textContent = "終了して結果を見る";
-    
-    const genre = document.getElementById('genre-filter').value;
-    const subgenre = document.getElementById('subgenre-filter').value;
-    const apiKey = localStorage.getItem('my_gemini_api_key');
-    
-    let topicHint = "衛生工学全般";
-    if (genre && genre !== "all") {
-        topicHint = `衛生工学部門の「${genre}」分野全般`;
-        if (subgenre && subgenre !== "all") {
-            topicHint += `（特に「${subgenre}」にフォーカス）`;
-        }
-    }
-
-    let targetForRef = (genre === "all") ? allQuestions : currentTargetQuestions;
-    let refQuestions = targetForRef.map(q => q.question);
-    if (refQuestions.length > 150) {
-        refQuestions = refQuestions.sort(() => 0.5 - Math.random()).slice(0, 150);
-    }
-    const refText = refQuestions.map(q => `・${q}`).join('\n');
-
-    const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「5問」生成してください。
-
-【テーマ】
-${topicHint}
-
-【過去の出題例（参考）】
-${refText}
-
-【指示】
-・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
-・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
-
-以下のJSONフォーマットで出力してください。
-{
-  "questions": [
-    {
-      "question": "問題文",
-      "options": ["選択肢1", "選択肢2", "選択肢3", "選択肢4", "選択肢5"],
-      "answer": 0,
-      "explanation": "解説"
-    }
-  ]
-}`;
-
-    try {
-      // 共通化されたAPI呼び出し関数を使用
-      const result = await callGeminiAPI(prompt, apiKey, 5);
-      
-      const startIndex = filteredQuestions.length;
-      result.data.forEach((qData, idx) => {
-          filteredQuestions.push({
-            id: "AI-" + Date.now() + "-" + idx,
-            year: "AI生成予想",
-            qNum: `Q${idx+1}`,
-            genre: genre !== "all" ? genre : "AI総合",
-            subgenre: subgenre !== "all" ? subgenre : "網羅的",
-            question: qData.question,
-            options: qData.options,
-            answer: qData.answer,
-            explanation: `【AIによる解説】${result.isLite ? ' (Liteモデル)' : ''}\n${qData.explanation}`,
-            imageUrl: "",
-            isAi: true
-          });
-      });
-
-      document.getElementById('ai-loading').style.display = 'none';
-      document.getElementById('q-text').style.display = 'block';
-      document.getElementById('opt-box').style.display = 'flex';
-      document.getElementById('q-source').style.display = 'inline-flex';
-      
-      curIdx = startIndex;
-      renderQuestion();
-      
-    } catch(e) {
-      console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n時間を置いてから再度お試しください。\n【詳細】\n${e.message}`);
-      window.goToStart();
-    }
-  }
-
-  function renderQuestion() {
+  /* === SINGLE VIEW RENDER (Normal / AI mode) === */
+  function renderQuestionSingle() {
     const q = filteredQuestions[curIdx];
-    
-    // 模試モードの場合、プログレスは全35問表示
-    document.getElementById('prog-label').textContent = isMockMode ? `${q.qNum} / 全35問` : `問 ${curIdx + 1} / ${filteredQuestions.length}`;
-    
+    document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
     document.getElementById('q-text').textContent = q.question;
     
-    const sourceEl = document.getElementById('q-source');
-    if (q.isAi) {
-      sourceEl.innerHTML = '✨ AIオリジナル新規問題';
-      sourceEl.style.color = '#a855f7';
-      sourceEl.style.borderColor = 'rgba(168, 85, 247, 0.3)';
-      sourceEl.style.background = 'rgba(168, 85, 247, 0.05)';
-    } else {
-      sourceEl.innerHTML = `📖 出典: ${q.year} ${q.qNum}`;
-      sourceEl.style.color = 'var(--text-muted)';
-      sourceEl.style.borderColor = 'var(--border)';
-      sourceEl.style.background = 'var(--bg)';
-    }
+    const src = document.getElementById('q-source');
+    if (q.isAi) { src.innerHTML = '✨ AIオリジナル'; src.style.cssText = 'color:#a855f7; border-color:rgba(168,85,247,0.3); background:rgba(168,85,247,0.05);'; }
+    else { src.innerHTML = `📖 出典: ${q.year} ${q.qNum}`; src.style.cssText = 'color:var(--text-muted); border-color:var(--border); background:var(--bg);'; }
 
-    const trendLabel = document.getElementById('trend-label');
-    if (!isAiMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
-        const lv = subgenreTrendScores[q.subgenre].level;
-        const stars = '★'.repeat(lv) + '☆'.repeat(5 - lv);
-        trendLabel.textContent = `頻出度 ${stars}`;
-        
-        trendLabel.className = 'trend-badge'; 
-        trendLabel.classList.add(`trend-lv${lv}`);
-        trendLabel.style.display = "inline-block";
-    } else {
-        trendLabel.style.display = "none";
-    }
+    const tr = document.getElementById('trend-label');
+    if (!isAiMode && subgenreTrendScores[q.subgenre]) {
+        let lv = subgenreTrendScores[q.subgenre].level;
+        tr.textContent = `頻出度 ${'★'.repeat(lv)}${'☆'.repeat(5-lv)}`;
+        tr.className = `trend-badge trend-lv${lv}`; tr.style.display = "inline-block";
+    } else tr.style.display = "none";
 
-    const imgContainer = document.getElementById("q-image-container");
-    if (q.imageUrl) {
-        imgContainer.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="問題図" onerror="this.style.display='none';">`;
-        imgContainer.style.display = "block";
-    } else {
-        imgContainer.innerHTML = "";
-        imgContainer.style.display = "none";
-    }
+    const img = document.getElementById("q-image-container");
+    if (q.imageUrl) { img.innerHTML = `<img src="${q.imageUrl}" class="question-image" alt="図" onerror="this.style.display='none';">`; img.style.display = "block"; }
+    else { img.style.display = "none"; }
 
-    const optBox = document.getElementById('opt-box');
-    optBox.innerHTML = ''; 
+    const optBox = document.getElementById('opt-box'); optBox.innerHTML = '';
+    const hasAns = sessionAnswers.hasOwnProperty(q.id);
     
-    const hasAnswered = sessionAnswers.hasOwnProperty(q.id);
-    
-    // 模試モードで25問解答済みの場合、未解答の問題はロックする
-    const isMockLocked = isMockMode && mockAnsweredCount >= 25 && !hasAnswered;
-
     q.options.forEach((opt, idx) => {
-        const btn = document.createElement('button');
-        btn.className = 'option-btn';
-        btn.textContent = `${idx + 1}. ${opt}`;
-        
-        if (hasAnswered) {
-          btn.disabled = true;
-          if (idx === q.answer) btn.classList.add("correct");
-          if (sessionAnswers[q.id] === idx && idx !== q.answer) btn.classList.add("wrong");
-        } else if (isMockLocked) {
-          btn.disabled = true;
-          btn.style.opacity = "0.5";
-        } else {
-          btn.onclick = () => selectOption(idx);
-        }
-        
-        optBox.appendChild(btn);
+        const b = document.createElement('button'); b.className = 'option-btn'; b.textContent = `${idx + 1}. ${opt}`;
+        if (hasAns) {
+            b.disabled = true;
+            if (idx === q.answer) b.classList.add("correct");
+            if (sessionAnswers[q.id] === idx && idx !== q.answer) b.classList.add("wrong");
+        } else { b.onclick = () => selectOptionSingle(idx); }
+        optBox.appendChild(b);
     });
-    
-    if (isMockLocked) {
-        let msg = document.createElement('div');
-        msg.style.color = "#ef4444";
-        msg.style.fontWeight = "bold";
-        msg.style.marginTop = "12px";
-        msg.textContent = "※すでに25問解答したため、この問題は解答できません。";
-        optBox.appendChild(msg);
-    }
 
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('ai-explain-result').style.display = 'none';
     document.getElementById('ai-explain-btn').style.display = 'none';
     
-    const nextBtn = document.getElementById('next-btn');
-    const skipBtn = document.getElementById('skip-btn');
-    
-    // スキップボタンの表示制御
-    // 模試モードの場合は常にスキップ（次の問題を見る）可能にする
-    if (hasAnswered) {
-      skipBtn.style.display = 'none'; 
+    const nBtn = document.getElementById('next-btn'), sBtn = document.getElementById('skip-btn');
+    sBtn.style.display = hasAns ? 'none' : 'block';
+
+    if (hasAns) {
+        document.getElementById('res-status').innerHTML = sessionAnswers[q.id] === q.answer ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
+        let txt = document.getElementById('exp-text');
+        txt.innerHTML = escapeHtml(q.explanation).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
+        renderMath(txt);
+        document.getElementById('exp-box').classList.add('show');
+        if (!q.isAi) document.getElementById('ai-explain-btn').style.display = 'block';
+        
+        nBtn.disabled = false;
+        if (curIdx === filteredQuestions.length - 1) {
+            nBtn.textContent = isAiMode ? '次のAI特訓へ' : '結果を見る';
+            nBtn.onclick = isAiMode ? window.startAIQuiz : showResults;
+        } else { nBtn.textContent = '次の問題へ'; nBtn.onclick = () => { curIdx++; renderQuestionSingle(); window.scrollTo(0,0); }; }
     } else {
-      skipBtn.style.display = 'block';
-      skipBtn.textContent = isMockMode ? "この問題を飛ばす ⏭️" : "スキップ ⏭️";
+        nBtn.disabled = true; nBtn.textContent = '回答を選択'; nBtn.onclick = null;
     }
+  }
 
-    if (hasAnswered) {
-      const isCorrect = sessionAnswers[q.id] === q.answer;
-      const resStatus = document.getElementById('res-status');
-      resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
-      
-      // KaTeXとマークダウンの簡易パースを適用
-      let expHtml = escapeHtml(q.explanation).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      document.getElementById('exp-text').innerHTML = expHtml;
-      if (window.renderMathInElement) {
-          renderMathInElement(document.getElementById('exp-text'), {
-              delimiters: [
-                  {left: '$$', right: '$$', display: true},
-                  {left: '$', right: '$', display: false}
-              ],
-              throwOnError: false
-          });
-      }
-
-      document.getElementById('exp-box').classList.add('show');
-      
+  function selectOptionSingle(idx) {
+      const q = filteredQuestions[curIdx]; if(sessionAnswers.hasOwnProperty(q.id)) return;
+      sessionAnswers[q.id] = idx;
       if (!isAiMode) {
-        document.getElementById('ai-explain-btn').style.display = 'block';
+          if(!userMemory.history[q.id]) userMemory.history[q.id] = {c:0, w:0};
+          let cor = idx === q.answer;
+          cor ? (userMemory.history[q.id].c++, userMemory.history[q.id].w=0) : userMemory.history[q.id].w++;
+          userMemory.stats.total++; if(cor) userMemory.stats.correct++;
+          processGameLogic(cor);
       }
-      
-      nextBtn.disabled = false;
-      
-      if (isMockMode) {
-          if (mockAnsweredCount >= 25 || curIdx === filteredQuestions.length - 1) {
-              nextBtn.textContent = '模試を終了して採点する';
-              nextBtn.onclick = showResults;
-              nextBtn.style.background = "#ef4444";
-          } else {
-              nextBtn.textContent = '次の問題へ';
-              nextBtn.onclick = goNext;
-              nextBtn.style.background = "";
-          }
-      } else {
-          if (isAiMode && curIdx === filteredQuestions.length - 1) {
-              nextBtn.textContent = '次のAI予想問題へ';
-              nextBtn.onclick = () => generateAIQuestionsBatch();
-          } else if (curIdx === filteredQuestions.length - 1) {
-              nextBtn.textContent = '結果を見る';
-              nextBtn.onclick = showResults;
-          } else {
-              nextBtn.textContent = '次の問題へ';
-              nextBtn.onclick = goNext;
-          }
-      }
-    } else {
-      // 模試モードで25問解答済みの場合は、スキップして次へ行けるようにする
-      if (isMockLocked) {
-          nextBtn.disabled = false;
-          if (curIdx === filteredQuestions.length - 1) {
-              nextBtn.textContent = '模試を終了して採点する';
-              nextBtn.onclick = showResults;
-              nextBtn.style.background = "#ef4444";
-          } else {
-              nextBtn.textContent = '次の問題へ';
-              nextBtn.onclick = goNext;
-          }
-      } else {
-          nextBtn.disabled = true;
-          nextBtn.textContent = '回答を選択してください';
-          nextBtn.onclick = null;
-      }
-    }
-  }
-  
-  function escapeHtml(str) {
-      if (!str) return '';
-      return String(str).replace(/[&<>"'`=\/]/g, function (s) {
-          return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;' }[s];
-      });
-  }
-
-  window.selectOption = function(selectedIdx) {
-    const q = filteredQuestions[curIdx];
-    if(sessionAnswers.hasOwnProperty(q.id)) return;
-    
-    // 模試モードで25問を超えようとした場合はブロック
-    if (isMockMode && mockAnsweredCount >= 25) {
-        alert("すでに25問解答しています。");
-        return;
-    }
-    
-    sessionAnswers[q.id] = selectedIdx; 
-    const isCorrect = selectedIdx === q.answer;
-    
-    if (isMockMode) {
-        mockAnsweredCount++;
-        document.getElementById('mock-answered-count').textContent = mockAnsweredCount;
-        processGameLogic(isCorrect);
-    } else if (!isAiMode) {
-      if (!userMemory.history[q.id]) {
-        userMemory.history[q.id] = { c: 0, w: 0 };
-      }
-      
-      if (isCorrect) {
-          userMemory.history[q.id].c++;
-          userMemory.history[q.id].w = 0; 
-      } else {
-          userMemory.history[q.id].w++;
-      }
-      
-      userMemory.stats.total++;
-      if (isCorrect) userMemory.stats.correct++;
-      
-      processGameLogic(isCorrect);
-      saveUserData();
-    } else {
-      processGameLogic(isCorrect);
-    }
-
-    renderQuestion(); 
+      renderQuestionSingle();
   }
 
   window.skipQuestion = function() {
-    if (isMockMode) {
-        // 模試モードの場合
-        if (curIdx === filteredQuestions.length - 1) {
-            showResults();
-        } else {
-            curIdx++;
-            renderQuestion();
-            window.scrollTo(0, 0);
-        }
-    } else {
-        // 通常のスキップ
-        if (curIdx === filteredQuestions.length - 1) {
-            if (isAiMode) {
-                generateAIQuestionsBatch();
-            } else {
-                showResults();
-            }
-        } else {
-            curIdx++;
-            renderQuestion();
-            window.scrollTo(0, 0);
-        }
-    }
-  }
+      if(curIdx === filteredQuestions.length - 1) isAiMode ? window.startAIQuiz() : showResults();
+      else { curIdx++; renderQuestionSingle(); window.scrollTo(0,0); }
+  };
 
-  window.askAIExplain = async function(useLiteModel = false) {
-    const apiKey = localStorage.getItem('my_gemini_api_key');
-    if (!apiKey) {
-      alert("AI解説機能を使用するには、スタート画面の設定エリアに「Gemini APIキー」を入力して保存してください。");
-      return;
-    }
-
-    const q = filteredQuestions[curIdx];
-    const btn = document.getElementById("ai-explain-btn");
-    const loading = document.getElementById("ai-explain-loading");
-    const resultBox = document.getElementById("ai-explain-result");
-    const resultText = document.getElementById("ai-explain-text");
-
-    btn.style.display = "none";
-    loading.style.display = "block";
-    
-    const loadingMsg = document.getElementById("ai-explain-loading-msg");
-    if (useLiteModel) {
-      loadingMsg.innerHTML = "標準モデルが混雑しているため、<br>軽量モデル(Lite)で解説を生成しています...";
-    } else {
-      loadingMsg.innerHTML = "AIが詳細な解説を生成しています...";
-    }
-    
-    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-    const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
-以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを詳細に解説してください。
-
-【問題文】
-${q.question}
-
-【選択肢】
-${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
-
-【正解】
-選択肢 ${q.answer + 1}`;
-
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }]
-    };
-
-    try {
-      const response = await fetch(apiUrl, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload) 
+  /* === MOCK EXAM RENDER (List View) === */
+  function renderMockList() {
+      const list = document.getElementById('mock-q-list'); list.innerHTML = '';
+      
+      filteredQuestions.forEach((q, qIndex) => {
+          const card = document.createElement('div');
+          card.className = 'mock-q-card'; card.id = `mock-card-${q.id}`;
+          
+          let srcHtml = q.isAi ? `<span class="q-source-badge" style="color:#a855f7; border:1px solid rgba(168,85,247,0.3); background:rgba(168,85,247,0.05); margin:0;">✨ AI</span>` 
+                               : `<span class="q-source-badge" style="color:var(--text-muted); border:1px solid var(--border); background:var(--bg); margin:0;">過去問</span>`;
+          
+          let html = `
+            <div class="mock-q-header">
+                <div><span class="mock-q-num">${q.qNum}</span> <span style="font-size:0.8rem; color:var(--text-muted); margin-left:8px;">${q.genre}</span></div>
+                ${srcHtml}
+            </div>
+            <div class="question-box">${q.question}</div>
+            <div class="options" id="mock-opts-${q.id}"></div>
+          `;
+          card.innerHTML = html;
+          list.appendChild(card);
+          
+          const optBox = document.getElementById(`mock-opts-${q.id}`);
+          q.options.forEach((opt, oIdx) => {
+              const btn = document.createElement('button');
+              btn.className = 'option-btn mock-opt-btn'; btn.textContent = `${oIdx+1}. ${opt}`;
+              btn.onclick = () => selectMockOption(q.id, oIdx);
+              optBox.appendChild(btn);
+          });
       });
+      updateMockStatus();
+  }
+
+  function selectMockOption(qId, optIdx) {
+      const hasPrev = sessionAnswers.hasOwnProperty(qId);
+      if (!hasPrev && mockAnsweredCount >= 25) return; // Locked out
       
-      const result = await response.json();
+      sessionAnswers[qId] = optIdx;
       
-      if (!response.ok) {
-        if ((response.status === 429 || response.status === 503) && !useLiteModel) {
-            console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで解説を生成します...`);
-            return askAIExplain(true); 
-        }
-        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
+      // Update UI for this specific card
+      const optBox = document.getElementById(`mock-opts-${qId}`);
+      Array.from(optBox.children).forEach((btn, i) => {
+          if (i === optIdx) btn.classList.add('selected');
+          else btn.classList.remove('selected');
+      });
+
+      if (!hasPrev) mockAnsweredCount++;
+      updateMockStatus();
+  }
+
+  function updateMockStatus() {
+      const bar = document.getElementById('mock-status-bar'), cnt = document.getElementById('mock-answered-count'), subBtn = document.getElementById('mock-submit-btn');
+      cnt.textContent = mockAnsweredCount;
+      
+      if (mockAnsweredCount >= 25) {
+          bar.classList.add('locked');
+          subBtn.disabled = false; subBtn.style.cssText = "background-color:var(--danger-btn); color:white;"; subBtn.textContent = "25問 選択完了（採点する）";
+          // Disable unanswered cards visually
+          filteredQuestions.forEach(q => {
+              const card = document.getElementById(`mock-card-${q.id}`);
+              if (!sessionAnswers.hasOwnProperty(q.id)) card.classList.add('locked-out');
+          });
+      } else {
+          bar.classList.remove('locked');
+          subBtn.disabled = true; subBtn.style.cssText = "background-color:var(--border); color:var(--text-muted);"; subBtn.textContent = "あと " + (25 - mockAnsweredCount) + " 問選択してください";
+          filteredQuestions.forEach(q => {
+              document.getElementById(`mock-card-${q.id}`).classList.remove('locked-out');
+          });
       }
-
-      if (result.candidates && result.candidates[0].content.parts[0].text) {
-        let aiText = result.candidates[0].content.parts[0].text;
-        
-        loading.style.display = "none";
-        
-        // マークダウンの太字と改行を簡易的にHTMLに変換
-        let formattedText = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
-        formattedText = escapeHtml(formattedText)
-            .replace(/\*\*(.*?)\*\*/g, "<b>$1</b>")     // 太字
-            .replace(/\n/g, "<br>");                    // 改行
-            
-        resultText.innerHTML = formattedText;
-        resultBox.style.display = "block";
-
-        // KaTeXで数式をレンダリング
-        setTimeout(() => {
-            if (window.renderMathInElement) {
-                renderMathInElement(resultBox, {
-                    delimiters: [
-                        {left: '$$', right: '$$', display: true},
-                        {left: '$', right: '$', display: false},
-                        {left: '\\(', right: '\\)', display: false},
-                        {left: '\\[', right: '\\]', display: true}
-                    ],
-                    throwOnError: false
-                });
-            }
-        }, 50);
-      }
-    } catch(e) {
-      console.error("AI解説生成エラー", e);
-      loading.style.display = "none";
-      btn.style.display = "block";
-      alert(`AI解説の生成に失敗しました。\n\n【詳細】\n${e.message}`);
-    }
   }
 
-  window.goNext = function() {
-    if (curIdx < filteredQuestions.length - 1) {
-        curIdx++; renderQuestion(); window.scrollTo(0, 0);
-    }
+  window.submitMockExam = function() {
+      if (mockAnsweredCount < 25) return;
+      if (confirm("選択した25問で採点を行います。よろしいですか？")) showResults();
   }
 
-  window.quitQuiz = function() {
-    if (isMockMode) {
-        if(confirm("本番模試を終了して採点しますか？\n（現在までの解答で採点されます）")) {
-            window.showResults();
-        }
-    } else if (isAiMode) {
-        if(confirm("AI網羅特訓を終了して結果を見ますか？")) {
-            window.showResults();
-        }
-    } else {
-        if(confirm("演習を中断して設定画面に戻りますか？\n（現在までの進捗は保存されません）")) {
-            window.goToStart();
-        }
-    }
-  }
+  /* === Shared / Utils === */
+  window.askAIExplain = async function(lite=false) {
+    const key = localStorage.getItem('my_gemini_api_key'); if(!key) return alert("APIキーを設定してください。");
+    const q = filteredQuestions[curIdx], b = document.getElementById("ai-explain-btn"), l = document.getElementById("ai-explain-loading"), rb = document.getElementById("ai-explain-result"), rt = document.getElementById("ai-explain-text");
+    b.style.display="none"; l.style.display="block"; document.getElementById("ai-explain-loading-msg").innerHTML = lite?"Liteで生成中...":"AI解説生成中...";
+    
+    const p = `技術士の講師として、以下の問題の正解と不正解の理由を詳細解説して。\n問題:${q.question}\n選択肢:\n${q.options.map((o,i)=>`${i+1}.${o}`).join('\n')}\n正解:${q.answer+1}`;
+    try {
+        const res = await callGeminiAPI(p, key, 1, lite);
+        l.style.display="none";
+        rt.innerHTML = escapeHtml(lite?`[Lite]\n${res.data[0].explanation}`:res.data[0].explanation).replace(/\*\*(.*?)\*\*/g,"<b>$1</b>").replace(/\n/g,"<br>");
+        rb.style.display="block"; renderMath(rb);
+    } catch(e) { l.style.display="none"; b.style.display="block"; alert("生成失敗:\n"+e.message); }
+  };
 
-  window.goToStart = function() {
-    updateMemoryUI(); 
-    switchScreen('screen-start');
-    window.scrollTo(0, 0);
-  }
+  window.quitQuiz = function() { if(confirm("演習を中断して戻りますか？")) goToStart(); };
+  window.goToStart = function() { updateMemoryUI(); switchScreen('screen-start'); window.scrollTo(0,0); };
 
   window.showResults = function() {
-    let correctCount = 0;
-    // sessionAnswersに記録されている（＝スキップされなかった）問題だけを評価
-    const questionsToEval = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
-    
-    questionsToEval.forEach(q => {
-      const isCorrect = sessionAnswers[q.id] === q.answer;
-      if (isCorrect) correctCount++;
-    });
-
-    const count = questionsToEval.length;
-    const rate = count > 0 ? Math.round((correctCount / count) * 100) : 0;
+    let evQs = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id)), cor = 0;
+    evQs.forEach(q => { if(sessionAnswers[q.id] === q.answer) cor++; });
+    const rt = evQs.length > 0 ? Math.round((cor/evQs.length)*100) : 0;
     
     document.getElementById("result-title").textContent = isMockMode ? "模試 成績表" : "演習結果";
-    document.getElementById("score-text").textContent = `${rate}%`;
-    document.getElementById("score-detail").textContent = `${correctCount} / ${count} 問 正解`;
+    document.getElementById("score-text").textContent = `${rt}%`;
+    document.getElementById("score-detail").textContent = `${cor} / ${evQs.length} 問 正解`;
     
-    // 模試モード専用の合否判定表示 (60% = 15/25で合格ラインと仮定)
-    const passStatus = document.getElementById("mock-pass-status");
+    const ps = document.getElementById("mock-pass-status");
     if (isMockMode) {
-        passStatus.style.display = "block";
-        if (count < 25) {
-             passStatus.textContent = `判定不能（選択数が25問に達していません）`;
-             passStatus.style.background = "var(--border)";
-             passStatus.style.color = "var(--text-muted)";
-        } else if (rate >= 60) {
-             passStatus.textContent = `💮 合格ライン突破！ (${correctCount}/25)`;
-             passStatus.style.background = "var(--success-bg)";
-             passStatus.style.color = "var(--success-text)";
-        } else {
-             passStatus.textContent = `あと一歩... (${correctCount}/25) 合格ラインは15問です`;
-             passStatus.style.background = "var(--danger-bg)";
-             passStatus.style.color = "var(--danger-text)";
-        }
-    } else {
-        passStatus.style.display = "none";
-    }
+        ps.style.display = "block";
+        if(cor >= 15) { ps.textContent = `💮 合格ライン突破！ (${cor}/25)`; ps.style.cssText = "display:block; background:var(--success-bg); color:var(--success-text); margin-top:12px; padding:8px; border-radius:8px;"; }
+        else { ps.textContent = `あと一歩... (${cor}/25) 合格ラインは15問`; ps.style.cssText = "display:block; background:var(--danger-bg); color:var(--danger-text); margin-top:12px; padding:8px; border-radius:8px;"; }
+    } else ps.style.display = "none";
 
     document.querySelector('input[name="res-filter"][value="all"]').checked = true;
-    window.renderHistoryUI(questionsToEval);
+    renderHistoryUI(evQs); switchScreen('screen-result'); window.scrollTo(0,0);
+  };
 
-    switchScreen('screen-result');
-    window.scrollTo(0, 0);
-  }
-
-  window.renderHistoryUI = function(questions = null) {
-    if (!questions) {
-        questions = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
-    }
-    
-    const historyList = document.getElementById("history-list");
-    historyList.innerHTML = "";
-    
-    const filterMode = document.querySelector('input[name="res-filter"]:checked').value;
-    let displayedCount = 0;
-
-    questions.forEach((q, index) => {
-      const userAnsIdx = sessionAnswers[q.id];
-      const isCorrect = userAnsIdx === q.answer;
-      
-      if (filterMode === 'wrong' && isCorrect) return;
-      displayedCount++;
-
-      const item = document.createElement("div");
-      item.className = `history-item ${isCorrect ? 'hi-correct' : 'hi-wrong'}`;
-      const userAnsText = userAnsIdx !== undefined ? q.options[userAnsIdx] : "未回答";
-      const correctAnsText = q.options[q.answer];
-
+  window.renderHistoryUI = function(qs = null) {
+    if(!qs) qs = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
+    const hl = document.getElementById("history-list"), fm = document.querySelector('input[name="res-filter"]:checked').value;
+    hl.innerHTML = ""; let dc = 0;
+    qs.forEach((q, i) => {
+      const isC = sessionAnswers[q.id] === q.answer; if(fm==='wrong'&&isC) return;
+      dc++;
+      const item = document.createElement("div"); item.className = `history-item ${isC?'hi-correct':'hi-wrong'}`;
+      let ua = sessionAnswers[q.id]!==undefined?q.options[sessionAnswers[q.id]]:"未回答", ca = q.options[q.answer];
       item.innerHTML = `
-        <div class="hi-header">
-          <span>${isMockMode ? q.qNum : '問 ' + (index + 1)} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
-          <span class="hi-mark">${isCorrect ? '〇 正解' : '× 不正解'}</span>
-        </div>
+        <div class="hi-header"><span>${isMockMode?q.qNum:'問 '+(i+1)} <span style="font-size:0.75rem;">(${q.year})</span></span><span class="hi-mark">${isC?'〇 正解':'× 不正解'}</span></div>
         <div class="hi-q">${q.question}</div>
         <div class="hi-ans">
-          <div class="ans-row">
-            <span class="ans-label">あなたの<br>回答:</span>
-            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'};">${userAnsText}</span>
-          </div>
-          ${!isCorrect ? `
-          <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
-            <span class="ans-label">正解:</span>
-            <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
-          </div>
-          ` : ''}
+          <div class="ans-row"><span class="ans-label">あなたの<br>回答:</span><span style="color:${isC?'var(--success-text)':'var(--danger-text)'};">${ua}</span></div>
+          ${!isC?`<div class="ans-row" style="margin-top:4px; border-top:1px dashed var(--border); padding-top:6px;"><span class="ans-label">正解:</span><span style="color:var(--success-text); font-weight:bold;">${ca}</span></div>`:''}
         </div>
+        ${isMockMode ? `<div style="margin-top:12px; font-size:0.85rem; padding:8px; background:var(--card); border:1px solid var(--border); border-radius:6px; white-space:pre-wrap;">${escapeHtml(q.explanation).replace(/\n/g, '<br>')}</div>` : ''}
       `;
-      historyList.appendChild(item);
+      hl.appendChild(item);
+      if(isMockMode) renderMath(item);
     });
-
-    if (displayedCount === 0) {
-      historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。<br>（すべて正解しました！）</div>`;
-    }
-  }
+    if(dc===0) hl.innerHTML = `<div class="empty-msg">表示する問題がありません。</div>`;
+  };
 </script>
 </body>
 </html>
