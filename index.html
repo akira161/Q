@@ -517,7 +517,7 @@
     <div id="quiz-mock-view" style="display: none;">
       <div id="mock-status-bar">
         本番模試モード: 現在 <span id="mock-answered-count" class="mock-count">0</span> / 25問 選択中
-        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-top: 4px;">※全35問の中から、解答する25問を選んでください。</div>
+        <div style="font-size: 0.8rem; color: var(--text-muted); font-weight: normal; margin-top: 4px;">※全35問の中から、自信のある25問を選んで解答してください。</div>
       </div>
       
       <!-- 35問のリストがここに追加される -->
@@ -854,21 +854,41 @@
     setupScreenForMode('single'); renderQuestionSingle();
   };
 
-  /* --- API Caller with Fallback/Chunks --- */
+  /* --- API Caller (Robust JSON parser + Fallback) --- */
   async function callGeminiAPI(prompt, apiKey, expectedCount, useLite = false) {
       const model = useLite ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
       const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
       const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
+      
       const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const result = await res.json();
+      
       if (!res.ok) {
-          if ((res.status === 429 || res.status === 503) && !useLite) {
-              console.warn("API制限/高負荷。Liteで再試行。"); await new Promise(r => setTimeout(r, 2000));
-              return callGeminiAPI(prompt, apiKey, expectedCount, true);
-          }
           throw new Error(`[${res.status}] ${result.error?.message || "通信エラー"}`);
       }
-      return { data: JSON.parse(result.candidates[0].content.parts[0].text).questions, isLite: useLite };
+      
+      let responseText = result.candidates[0].content.parts[0].text;
+      
+      // JSONの確実な抽出（AIが前後に余計な文章をつけてきた場合への対策）
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+          responseText = jsonMatch[0];
+      }
+      
+      let parsedData;
+      try {
+          parsedData = JSON.parse(responseText);
+      } catch (e) {
+          console.error("JSON Parse Error:", e, "Raw Response:", responseText);
+          throw new Error("AIが有効なJSONフォーマットを返しませんでした。");
+      }
+
+      if (!parsedData || !Array.isArray(parsedData.questions)) {
+           console.error("Invalid Response Structure:", parsedData);
+           throw new Error("AIの応答に 'questions' 配列が含まれていません。");
+      }
+
+      return { data: parsedData.questions, isLite: useLite };
   }
 
   window.startAIQuiz = async function() {
@@ -877,17 +897,29 @@
     isAiMode = true; isMockMode = false; sessionAnswers = {}; filteredQuestions = []; curIdx = 0; currentCombo = 0;
     setupScreenForMode('loading');
     document.getElementById('ai-loading-msg').innerHTML = "AIが予想問題を5問生成しています...";
+    document.getElementById('ai-loading-sub').innerHTML = "少々お待ちください";
     
     let g = document.getElementById('genre-filter').value, sg = document.getElementById('subgenre-filter').value;
     let hint = g!=="all" ? `衛生工学部門の「${g}」分野全般${sg!=="all"?`（特に「${sg}」にフォーカス）`:""}` : "衛生工学全般";
     let ref = (g==="all" ? allQuestions : currentTargetQuestions).map(q=>q.question).sort(()=>0.5-Math.random()).slice(0, 100).map(q=>`・${q}`).join('\n');
     
     const prompt = `技術士（衛生工学部門）の試験委員として、【五肢択一問題】の予想問題を「5問」JSON生成して。\nテーマ: ${hint}\n参考:\n${ref}\n\nフォーマット: {"questions": [{"question":"", "options":["","","","",""], "answer":0, "explanation":""}]}`;
+    
     try {
-        const res = await callGeminiAPI(prompt, key, 5);
-        res.data.forEach((q, i) => filteredQuestions.push({
+        let resData = null;
+        try {
+            const res = await callGeminiAPI(prompt, key, 5);
+            resData = res.data;
+        } catch(apiErr) {
+            console.warn("標準モデルでの生成に失敗。Liteモデルで再試行します...", apiErr);
+            document.getElementById('ai-loading-msg').innerHTML = "サーバー混雑のため、<br>軽量モデル(Lite)で再試行しています...";
+            const resLite = await callGeminiAPI(prompt, key, 5, true);
+            resData = resLite.data;
+        }
+
+        resData.forEach((q, i) => filteredQuestions.push({
             id: `AI-${Date.now()}-${i}`, year: "AI予想", qNum: `Q${i+1}`, genre: g!=="all"?g:"AI総合", subgenre: sg!=="all"?sg:"網羅",
-            question: q.question, options: q.options, answer: q.answer, explanation: `【AI解説】${res.isLite?'(Lite)':''}\n${q.explanation}`, isAi: true
+            question: q.question, options: q.options, answer: q.answer, explanation: `【AI解説】\n${q.explanation}`, isAi: true
         }));
         setupScreenForMode('single'); renderQuestionSingle();
     } catch(e) { alert("生成失敗:\n" + e.message); goToStart(); }
@@ -901,39 +933,81 @@
     
     setupScreenForMode('loading');
     document.getElementById('ai-loading-msg').innerHTML = "本番模試(全35問)を作成しています...";
-    document.getElementById('ai-loading-sub').innerHTML = "問題が多い為、少々時間がかかります。<br>（進行状況: 0 / 28問 AI生成）";
+    document.getElementById('ai-loading-sub').innerHTML = "（進行状況: 0 / 28問 AI生成完了）<br><span style="font-size:0.8rem">問題数が多い為、数分かかる場合があります</span>";
 
-    const tasks = [ { g: "建築環境・設備・建築物衛生管理", c: 7 }, { g: "建築環境・設備・建築物衛生管理", c: 7 }, { g: "廃棄物管理", c: 4 }, { g: "廃棄物管理", c: 4 }, { g: "水質管理", c: 6 } ];
-    let aiQs = [], comp = 0;
+    // 安定してAI生成を行うため、1回あたりの生成数を最大4問に分割
+    // 目標AI生成数: 建築14問, 廃棄物8問, 水質6問 (計28問)
+    const tasks = [ 
+      { g: "建築環境・設備・建築物衛生管理", c: 4 }, 
+      { g: "建築環境・設備・建築物衛生管理", c: 4 }, 
+      { g: "建築環境・設備・建築物衛生管理", c: 4 }, 
+      { g: "建築環境・設備・建築物衛生管理", c: 2 }, 
+      { g: "廃棄物管理", c: 4 }, 
+      { g: "廃棄物管理", c: 4 }, 
+      { g: "水質管理", c: 4 }, 
+      { g: "水質管理", c: 2 } 
+    ];
 
-    try {
-        for (let i=0; i<tasks.length; i++) {
-            document.getElementById('ai-loading-sub').innerHTML = `（進行状況: ${comp} / 28問 生成済み）<br><span style="font-size:0.8rem">${tasks[i].g}を作成中...</span>`;
-            let ref = shuffle(allQuestions.filter(q=>q.genre===tasks[i].g)).slice(0,30).map(q=>`・${q.question}`).join('\n');
-            const prompt = `技術士（衛生工学部門）の試験委員として、【五肢択一問題】の予想問題を「${tasks[i].c}問」JSON生成して。\n分野: ${tasks[i].g}\n参考:\n${ref}\n\nフォーマット: {"questions": [{"question":"", "options":["1","2","3","4","5"], "answer":0, "explanation":""}]}`;
+    let aiQs = [], comp = 0, fallbackCount = 0;
+
+    for (let i=0; i<tasks.length; i++) {
+        document.getElementById('ai-loading-sub').innerHTML = `（進行状況: ${comp} / 28問 生成済み）<br><span style="font-size:0.8rem">${tasks[i].g} を作成中...</span>`;
+        let ref = shuffle(allQuestions.filter(q=>q.genre===tasks[i].g)).slice(0,30).map(q=>`・${q.question}`).join('\n');
+        const prompt = `技術士（衛生工学部門）の試験委員として、【五肢択一問題】の予想問題を「${tasks[i].c}問」JSON生成して。\n分野: ${tasks[i].g}\n参考:\n${ref}\n\nフォーマット: {"questions": [{"question":"", "options":["1","2","3","4","5"], "answer":0, "explanation":""}]}`;
+        
+        try {
+            let resData = null;
+            try {
+                // 通常モデルで挑戦
+                const res = await callGeminiAPI(prompt, key, tasks[i].c);
+                resData = res.data;
+            } catch (err1) {
+                console.warn(`Task ${i} failed with standard model. Trying Lite...`, err1);
+                // 失敗したらLiteモデルで再挑戦
+                const resLite = await callGeminiAPI(prompt, key, tasks[i].c, true);
+                resData = resLite.data;
+            }
             
-            const res = await callGeminiAPI(prompt, key, tasks[i].c);
-            res.data.forEach((q, idx) => aiQs.push({
+            resData.forEach((q, idx) => aiQs.push({
                 id: `Mock-AI-${Date.now()}-${i}-${idx}`, year: "模試 (AI)", qNum: "", genre: tasks[i].g, subgenre: "総合",
                 question: q.question, options: q.options, answer: q.answer, explanation: `【AI解説】\n${q.explanation}`, isAi: true
             }));
             comp += tasks[i].c;
-            if(i < tasks.length-1) await new Promise(r => setTimeout(r, 1000));
+            
+            // API制限回避のためのディレイ
+            if(i < tasks.length-1) await new Promise(r => setTimeout(r, 2000));
+            
+        } catch (fatalErr) {
+            console.error(`Task ${i} completely failed. Injecting real past questions as fallback.`, fatalErr);
+            // どんなに再試行してもダメだった場合は、本物の過去問で強制的に補填する（システムクラッシュ防止）
+            let fallbackQs = shuffle(allQuestions.filter(q=>q.genre===tasks[i].g)).slice(0, tasks[i].c);
+            fallbackQs.forEach((q, idx) => aiQs.push({
+                ...q, id: `Mock-Fallback-${Date.now()}-${i}-${idx}`, isAi: false, explanation: "【システム自動補填（過去問抽出）】\n" + q.explanation
+            }));
+            comp += tasks[i].c;
+            fallbackCount += tasks[i].c;
         }
-        
-        document.getElementById('ai-loading-sub').textContent = "過去問とブレンド中...";
-        let pastReqs = [ { g: "建築環境・設備・建築物衛生管理", c: 3 }, { g: "廃棄物管理", c: 2 }, { g: "水質管理", c: 2 } ], pastQs = [];
-        pastReqs.forEach(r => shuffle(allQuestions.filter(q=>q.genre===r.g)).slice(0, r.c).forEach(q => pastQs.push({...q, isAi:false})));
+    }
+    
+    document.getElementById('ai-loading-sub').textContent = "過去問とブレンドし、問題セットを構築中...";
+    let pastReqs = [ { g: "建築環境・設備・建築物衛生管理", c: 3 }, { g: "廃棄物管理", c: 2 }, { g: "水質管理", c: 2 } ], pastQs = [];
+    pastReqs.forEach(r => shuffle(allQuestions.filter(q=>q.genre===r.g)).slice(0, r.c).forEach(q => pastQs.push({...q, id: `Mock-Past-${Date.now()}-${q.id}`, isAi:false})));
 
-        let qIdx = 1;
-        ["建築環境・設備・建築物衛生管理", "廃棄物管理", "水質管理"].forEach(g => {
-            shuffle([...aiQs.filter(q=>q.genre===g), ...pastQs.filter(q=>q.genre===g)]).forEach(q => { q.qNum = `問 ${qIdx++}`; filteredQuestions.push(q); });
+    let qIdx = 1;
+    // ジャンルごとに出題順を整理（本番同様に建築→廃棄物→水質の順）
+    ["建築環境・設備・建築物衛生管理", "廃棄物管理", "水質管理"].forEach(g => {
+        shuffle([...aiQs.filter(q=>q.genre===g), ...pastQs.filter(q=>q.genre===g)]).forEach(q => { 
+            q.qNum = `問 ${qIdx++}`; 
+            filteredQuestions.push(q); 
         });
+    });
 
-        setupScreenForMode('mock-list');
-        renderMockList();
+    if (fallbackCount > 0) {
+        alert(`APIの高負荷により、${fallbackCount}問のAI生成に失敗しました。\n代わりに過去問DBから同ジャンルの問題を自動抽出して全35問のセットを構築しました。`);
+    }
 
-    } catch (e) { alert("模試作成失敗:\n" + e.message); goToStart(); }
+    setupScreenForMode('mock-list');
+    renderMockList();
   };
 
   /* UI Setup Helper */
@@ -998,8 +1072,8 @@
         
         nBtn.disabled = false;
         if (curIdx === filteredQuestions.length - 1) {
-            nBtn.textContent = isAiMode ? '次のAI特訓へ' : '結果を見る';
-            nBtn.onclick = isAiMode ? window.startAIQuiz : showResults;
+            nBtn.textContent = isAiMode ? '終了して結果を見る' : '結果を見る';
+            nBtn.onclick = showResults;
         } else { nBtn.textContent = '次の問題へ'; nBtn.onclick = () => { curIdx++; renderQuestionSingle(); window.scrollTo(0,0); }; }
     } else {
         nBtn.disabled = true; nBtn.textContent = '回答を選択'; nBtn.onclick = null;
@@ -1020,7 +1094,7 @@
   }
 
   window.skipQuestion = function() {
-      if(curIdx === filteredQuestions.length - 1) isAiMode ? window.startAIQuiz() : showResults();
+      if(curIdx === filteredQuestions.length - 1) showResults();
       else { curIdx++; renderQuestionSingle(); window.scrollTo(0,0); }
   };
 
@@ -1033,14 +1107,14 @@
           card.className = 'mock-q-card'; card.id = `mock-card-${q.id}`;
           
           let srcHtml = q.isAi ? `<span class="q-source-badge" style="color:#a855f7; border:1px solid rgba(168,85,247,0.3); background:rgba(168,85,247,0.05); margin:0;">✨ AI</span>` 
-                               : `<span class="q-source-badge" style="color:var(--text-muted); border:1px solid var(--border); background:var(--bg); margin:0;">過去問</span>`;
+                               : `<span class="q-source-badge" style="color:var(--text-muted); border:1px solid var(--border); background:var(--bg); margin:0;">過去問 (${q.year})</span>`;
           
           let html = `
             <div class="mock-q-header">
                 <div><span class="mock-q-num">${q.qNum}</span> <span style="font-size:0.8rem; color:var(--text-muted); margin-left:8px;">${q.genre}</span></div>
                 ${srcHtml}
             </div>
-            <div class="question-box">${q.question}</div>
+            <div class="question-box">${escapeHtml(q.question).replace(/\n/g, '<br>')}</div>
             <div class="options" id="mock-opts-${q.id}"></div>
           `;
           card.innerHTML = html;
@@ -1059,11 +1133,11 @@
 
   function selectMockOption(qId, optIdx) {
       const hasPrev = sessionAnswers.hasOwnProperty(qId);
-      if (!hasPrev && mockAnsweredCount >= 25) return; // Locked out
+      if (!hasPrev && mockAnsweredCount >= 25) return; // ロック状態
       
       sessionAnswers[qId] = optIdx;
       
-      // Update UI for this specific card
+      // 当該カードのUI更新
       const optBox = document.getElementById(`mock-opts-${qId}`);
       Array.from(optBox.children).forEach((btn, i) => {
           if (i === optIdx) btn.classList.add('selected');
@@ -1081,7 +1155,7 @@
       if (mockAnsweredCount >= 25) {
           bar.classList.add('locked');
           subBtn.disabled = false; subBtn.style.cssText = "background-color:var(--danger-btn); color:white;"; subBtn.textContent = "25問 選択完了（採点する）";
-          // Disable unanswered cards visually
+          // 未選択のカードを視覚的にロック
           filteredQuestions.forEach(q => {
               const card = document.getElementById(`mock-card-${q.id}`);
               if (!sessionAnswers.hasOwnProperty(q.id)) card.classList.add('locked-out');
@@ -1101,17 +1175,36 @@
   }
 
   /* === Shared / Utils === */
-  window.askAIExplain = async function(lite=false) {
+  window.askAIExplain = async function(useLite=false) {
     const key = localStorage.getItem('my_gemini_api_key'); if(!key) return alert("APIキーを設定してください。");
     const q = filteredQuestions[curIdx], b = document.getElementById("ai-explain-btn"), l = document.getElementById("ai-explain-loading"), rb = document.getElementById("ai-explain-result"), rt = document.getElementById("ai-explain-text");
-    b.style.display="none"; l.style.display="block"; document.getElementById("ai-explain-loading-msg").innerHTML = lite?"Liteで生成中...":"AI解説生成中...";
+    b.style.display="none"; l.style.display="block"; document.getElementById("ai-explain-loading-msg").innerHTML = useLite?"Liteモデルで生成中...":"AI解説生成中...";
     
     const p = `技術士の講師として、以下の問題の正解と不正解の理由を詳細解説して。\n問題:${q.question}\n選択肢:\n${q.options.map((o,i)=>`${i+1}.${o}`).join('\n')}\n正解:${q.answer+1}`;
     try {
-        const res = await callGeminiAPI(p, key, 1, lite);
+        let resText = "";
+        try {
+             const res = await callGeminiAPI(p, key, 1, useLite);
+             resText = res.data[0].explanation;
+        } catch (err) {
+             if (!useLite) {
+                 console.warn("Standard model failed for explanation. Trying Lite...");
+                 return window.askAIExplain(true);
+             }
+             throw err;
+        }
+        
         l.style.display="none";
-        rt.innerHTML = escapeHtml(lite?`[Lite]\n${res.data[0].explanation}`:res.data[0].explanation).replace(/\*\*(.*?)\*\*/g,"<b>$1</b>").replace(/\n/g,"<br>");
-        rb.style.display="block"; renderMath(rb);
+        
+        // マークダウンの太字と改行を簡易変換してHTMLにセット
+        let formattedText = escapeHtml(useLite ? `[Liteモデル]\n${resText}` : resText);
+        formattedText = formattedText.replace(/\*\*(.*?)\*\*/g, "<b>$1</b>").replace(/\n/g, "<br>");
+        rt.innerHTML = formattedText;
+        rb.style.display="block"; 
+        
+        // KaTeXで数式をレンダリング
+        renderMath(rb);
+
     } catch(e) { l.style.display="none"; b.style.display="block"; alert("生成失敗:\n"+e.message); }
   };
 
@@ -1130,7 +1223,7 @@
     const ps = document.getElementById("mock-pass-status");
     if (isMockMode) {
         ps.style.display = "block";
-        if(cor >= 15) { ps.textContent = `💮 合格ライン突破！ (${cor}/25)`; ps.style.cssText = "display:block; background:var(--success-bg); color:var(--success-text); margin-top:12px; padding:8px; border-radius:8px;"; }
+        if(cor >= 15) { ps.textContent = `💮 合格ライン到達！ (${cor}/25)`; ps.style.cssText = "display:block; background:var(--success-bg); color:var(--success-text); margin-top:12px; padding:8px; border-radius:8px;"; }
         else { ps.textContent = `あと一歩... (${cor}/25) 合格ラインは15問`; ps.style.cssText = "display:block; background:var(--danger-bg); color:var(--danger-text); margin-top:12px; padding:8px; border-radius:8px;"; }
     } else ps.style.display = "none";
 
@@ -1149,15 +1242,15 @@
       let ua = sessionAnswers[q.id]!==undefined?q.options[sessionAnswers[q.id]]:"未回答", ca = q.options[q.answer];
       item.innerHTML = `
         <div class="hi-header"><span>${isMockMode?q.qNum:'問 '+(i+1)} <span style="font-size:0.75rem;">(${q.year})</span></span><span class="hi-mark">${isC?'〇 正解':'× 不正解'}</span></div>
-        <div class="hi-q">${q.question}</div>
+        <div class="hi-q">${escapeHtml(q.question).replace(/\n/g, '<br>')}</div>
         <div class="hi-ans">
-          <div class="ans-row"><span class="ans-label">あなたの<br>回答:</span><span style="color:${isC?'var(--success-text)':'var(--danger-text)'};">${ua}</span></div>
-          ${!isC?`<div class="ans-row" style="margin-top:4px; border-top:1px dashed var(--border); padding-top:6px;"><span class="ans-label">正解:</span><span style="color:var(--success-text); font-weight:bold;">${ca}</span></div>`:''}
+          <div class="ans-row"><span class="ans-label">あなたの<br>回答:</span><span style="color:${isC?'var(--success-text)':'var(--danger-text)'};">${escapeHtml(ua)}</span></div>
+          ${!isC?`<div class="ans-row" style="margin-top:4px; border-top:1px dashed var(--border); padding-top:6px;"><span class="ans-label">正解:</span><span style="color:var(--success-text); font-weight:bold;">${escapeHtml(ca)}</span></div>`:''}
         </div>
-        ${isMockMode ? `<div style="margin-top:12px; font-size:0.85rem; padding:8px; background:var(--card); border:1px solid var(--border); border-radius:6px; white-space:pre-wrap;">${escapeHtml(q.explanation).replace(/\n/g, '<br>')}</div>` : ''}
+        ${isMockMode || isAiMode ? `<div style="margin-top:12px; font-size:0.85rem; padding:8px; background:var(--card); border:1px solid var(--border); border-radius:6px; white-space:pre-wrap;">${escapeHtml(q.explanation).replace(/\n/g, '<br>').replace(/\*\*(.*?)\*\*/g, '<b>$1</b>')}</div>` : ''}
       `;
       hl.appendChild(item);
-      if(isMockMode) renderMath(item);
+      if(isMockMode || isAiMode) renderMath(item);
     });
     if(dc===0) hl.innerHTML = `<div class="empty-msg">表示する問題がありません。</div>`;
   };
