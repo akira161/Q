@@ -320,7 +320,7 @@
     </div>
     <div id="upload-content" style="display: none; text-align: left;">
       <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; line-height: 1.5;">
-        セキュリティ制限によりExcelファイルを自動読み込みできません。<br>
+        セキュリティ制限によりExcelファイルを自動読み込みできませんでした。<br>
         お手数ですが、以下のボタンから直接 <b>最新のデータベースExcelファイル</b> を選択してください。
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
@@ -561,7 +561,7 @@
 </div>
 
 <script>
-  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
   const SHEET_NAME = "過去問マスターDB";
 
   let allQuestions = [];
@@ -591,19 +591,32 @@
       await loadExcelData();
       finishInit();
     } catch (error) {
-      document.getElementById('loading-content').style.display = 'none';
-      document.getElementById('upload-content').style.display = 'block';
+      console.warn("自動読み込み失敗:", error);
+      // エラーが起きた場合は確実に手動アップロード画面を表示
+      const loadingContent = document.getElementById('loading-content');
+      const uploadContent = document.getElementById('upload-content');
+      if (loadingContent) loadingContent.style.display = 'none';
+      if (uploadContent) uploadContent.style.display = 'block';
     }
   };
 
   function finishInit() {
-    loadUserData();
-    if (userMemory.exp === undefined) userMemory.exp = 0;
-    if (userMemory.level === undefined) userMemory.level = 1;
-    if (userMemory.gameMode === undefined) userMemory.gameMode = false;
+    try {
+      loadUserData();
+      if (userMemory.exp === undefined) userMemory.exp = 0;
+      if (userMemory.level === undefined) userMemory.level = 1;
+      if (userMemory.gameMode === undefined) userMemory.gameMode = false;
 
-    initApp(); applyTheme(); applyGameMode(); updateMemoryUI(); loadApiKey();
-    switchScreen('screen-start');
+      initApp(); 
+      applyTheme(); 
+      applyGameMode(); 
+      updateMemoryUI(); 
+      loadApiKey();
+      switchScreen('screen-start');
+    } catch(e) {
+      console.error("初期化中のエラー:", e);
+      alert("アプリの初期化中にエラーが発生しました。\n詳細: " + e.message);
+    }
   }
 
   /* --- Game Mode & UI Logic --- */
@@ -766,50 +779,107 @@
   async function loadExcelData() {
     const res = await fetch(`${EXCEL_FILE_NAME}?t=${Date.now()}`);
     if (!res.ok) throw new Error(`HTTP Error: ${res.status}`);
-    processExcelArrayBuffer(await res.arrayBuffer());
+    const buffer = await res.arrayBuffer();
+    processExcelArrayBuffer(buffer);
   }
+  
   window.handleManualUpload = function(e) {
     const f = e.target.files[0]; if (!f) return;
     const r = new FileReader();
-    r.onload = function(e) { try { processExcelArrayBuffer(e.target.result); finishInit(); } catch (err) { alert("解析失敗: " + err.message); } };
+    r.onload = function(e) { 
+      try { 
+        processExcelArrayBuffer(e.target.result); 
+        finishInit(); 
+      } catch (err) { 
+        alert("エクセルの解析に失敗しました。\n詳細: " + err.message); 
+      } 
+    };
     r.readAsArrayBuffer(f);
   };
+  
   function processExcelArrayBuffer(ab) {
-    const wb = XLSX.read(ab, {type: "array"}), ws = wb.Sheets[SHEET_NAME];
-    if (!ws) throw new Error(`シート無し`);
+    const wb = XLSX.read(ab, {type: "array"});
+    const ws = wb.Sheets[SHEET_NAME];
+    if (!ws) throw new Error(`シート「${SHEET_NAME}」が存在しません。`);
+    
     allQuestions = XLSX.utils.sheet_to_json(ws, {defval: ""}).map((row, i) => {
-      let ys = String(row['年度'] || '').trim(), yn = 0;
-      const rM = ys.match(/令和([0-9元]+)/);
-      if (rM) yn = (rM[1] === '元' ? 1 : parseInt(rM[1])) + 2018; 
-      else { const hM = ys.match(/平成([0-9]+)/); if (hM) yn = parseInt(hM[1]) + 1988; }
-      const opts = []; for(let j=1; j<=5; j++){ const o = String(row[`選択肢${String.fromCharCode(0x2460+j-1)}`] || '').trim(); if(o) opts.push(o); }
-      let ansM = String(row['公式正答'] || '').replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).match(/\d+/);
-      return {
-        id: `${ys}_${String(row['設問番号'] || `Q${i+1}`).trim()}`, year: ys, yearNum: yn, qNum: String(row['設問番号'] || `Q${i+1}`).trim(),
-        genre: String(row['大分類(ブロック)'] || '').trim(), subgenre: String(row['サブジャンル'] || '').trim(),
-        question: String(row['問題文'] || '').trim(), options: opts, answer: ansM ? parseInt(ansM[0], 10) - 1 : -1,
-        explanation: row['問題のテーマ・内容概要'] ? `【テーマ・内容概要】\n${String(row['問題のテーマ・内容概要']).trim()}` : "【解説】\n詳細な解説はありません。",
-        imageUrl: String(row['画像ファイル名'] || row['画像URL'] || '').trim() 
-      };
-    }).filter(q => q.question !== "");
+      try {
+        let ys = String(row['年度'] || '').trim(), yn = 0;
+        const rM = ys.match(/令和([0-9元]+)/);
+        if (rM) yn = (rM[1] === '元' ? 1 : parseInt(rM[1])) + 2018; 
+        else { const hM = ys.match(/平成([0-9]+)/); if (hM) yn = parseInt(hM[1]) + 1988; }
+        
+        const opts = []; 
+        for(let j=1; j<=5; j++){ 
+          const o = String(row[`選択肢${String.fromCharCode(0x2460+j-1)}`] || '').trim(); 
+          if(o) opts.push(o); 
+        }
+        
+        let ansM = String(row['公式正答'] || '').replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0)).match(/\d+/);
+        
+        return {
+          id: `${ys}_${String(row['設問番号'] || `Q${i+1}`).trim()}`, 
+          year: ys, yearNum: yn, qNum: String(row['設問番号'] || `Q${i+1}`).trim(),
+          genre: String(row['大分類(ブロック)'] || '').trim(), 
+          subgenre: String(row['サブジャンル'] || '').trim(),
+          question: String(row['問題文'] || '').trim(), 
+          options: opts, 
+          answer: ansM ? parseInt(ansM[0], 10) - 1 : -1,
+          explanation: row['問題のテーマ・内容概要'] ? `【テーマ・内容概要】\n${String(row['問題のテーマ・内容概要']).trim()}` : "【解説】\n詳細な解説はありません。",
+          imageUrl: String(row['画像ファイル名'] || row['画像URL'] || '').trim() 
+        };
+      } catch (rowErr) {
+        console.warn(`行 ${i+1} の処理中にエラー:`, rowErr);
+        return null;
+      }
+    }).filter(q => q && q.question !== "");
+    
+    if (allQuestions.length === 0) throw new Error("問題データが1件も見つかりませんでした。");
   }
 
   function initApp() {
-    const ys = new Set(), gs = new Set(), sy = {};
-    allQuestions.forEach(q => {
-      if(q.year) ys.add(q.year);
-      if(q.genre) { gs.add(q.genre); if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set(); if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre); }
-      if(q.subgenre && q.yearNum > 0) { if(!sy[q.subgenre]) sy[q.subgenre] = []; sy[q.subgenre].push(q.yearNum); }
-    });
-    let mxY = Math.max(...allQuestions.map(q => q.yearNum).filter(n => n > 0));
-    let rs = {}; Object.keys(sy).forEach(sub => { rs[sub] = sy[sub].reduce((s, y) => s + (y === mxY?10:y===mxY-1?7:y===mxY-2?5:y===mxY-3?3:y===mxY-4?2:1), 0); });
-    let mxR = Math.max(...Object.values(rs)) || 1;
-    Object.keys(rs).forEach(sub => { let rt = rs[sub]/mxR; subgenreTrendScores[sub] = { raw: rs[sub], level: rt>=0.8?5:rt>=0.6?4:rt>=0.4?3:rt>=0.2?2:1 }; });
-    masterYears = Array.from(new Set([...allQuestions].sort((a, b) => b.yearNum - a.yearNum).map(q => q.year))).filter(y => y);
-    masterGenres = Array.from(gs).sort();
-    document.getElementById('year-filter').innerHTML = '<option value="all">すべての年度</option>'; masterYears.forEach(y => document.getElementById('year-filter').add(new Option(y, y)));
-    document.getElementById('genre-filter').innerHTML = '<option value="all">すべての大分類</option>'; masterGenres.forEach(g => document.getElementById('genre-filter').add(new Option(g, g)));
-    updateFilterUI();
+    try {
+      const ys = new Set(), gs = new Set(), sy = {};
+      allQuestions.forEach(q => {
+        if(q.year) ys.add(q.year);
+        if(q.genre) { 
+          gs.add(q.genre); 
+          if(!genreToSubgenres[q.genre]) genreToSubgenres[q.genre] = new Set(); 
+          if(q.subgenre) genreToSubgenres[q.genre].add(q.subgenre); 
+        }
+        if(q.subgenre && q.yearNum > 0) { 
+          if(!sy[q.subgenre]) sy[q.subgenre] = []; 
+          sy[q.subgenre].push(q.yearNum); 
+        }
+      });
+      
+      let yearNums = allQuestions.map(q => q.yearNum).filter(n => n > 0);
+      let mxY = yearNums.length > 0 ? Math.max(...yearNums) : 2024;
+      
+      let rs = {}; 
+      Object.keys(sy).forEach(sub => { 
+        rs[sub] = sy[sub].reduce((s, y) => s + (y === mxY?10:y===mxY-1?7:y===mxY-2?5:y===mxY-3?3:y===mxY-4?2:1), 0); 
+      });
+      let mxR = Math.max(...Object.values(rs)) || 1;
+      
+      Object.keys(rs).forEach(sub => { 
+        let rt = rs[sub]/mxR; 
+        subgenreTrendScores[sub] = { raw: rs[sub], level: rt>=0.8?5:rt>=0.6?4:rt>=0.4?3:rt>=0.2?2:1 }; 
+      });
+      
+      masterYears = Array.from(new Set([...allQuestions].sort((a, b) => b.yearNum - a.yearNum).map(q => q.year))).filter(y => y);
+      masterGenres = Array.from(gs).sort();
+      
+      document.getElementById('year-filter').innerHTML = '<option value="all">すべての年度</option>'; 
+      masterYears.forEach(y => document.getElementById('year-filter').add(new Option(y, y)));
+      document.getElementById('genre-filter').innerHTML = '<option value="all">すべての大分類</option>'; 
+      masterGenres.forEach(g => document.getElementById('genre-filter').add(new Option(g, g)));
+      
+      updateFilterUI();
+    } catch(e) {
+      console.error("initApp 内でエラー:", e);
+      throw new Error("フィルタの初期化に失敗しました。");
+    }
   }
 
   window.updateFilterUI = function() {
@@ -867,24 +937,23 @@
           throw new Error(`[${res.status}] ${result.error?.message || "通信エラー"}`);
       }
       
+      if (!result.candidates || !result.candidates[0] || !result.candidates[0].content || !result.candidates[0].content.parts[0].text) {
+          throw new Error("AIから有効なテキストが返ってきませんでした。");
+      }
+
       let responseText = result.candidates[0].content.parts[0].text;
       
-      // JSONの確実な抽出（AIが前後に余計な文章をつけてきた場合への対策）
       const jsonMatch = responseText.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-          responseText = jsonMatch[0];
-      }
+      if (jsonMatch) responseText = jsonMatch[0];
       
       let parsedData;
       try {
           parsedData = JSON.parse(responseText);
       } catch (e) {
-          console.error("JSON Parse Error:", e, "Raw Response:", responseText);
           throw new Error("AIが有効なJSONフォーマットを返しませんでした。");
       }
 
       if (!parsedData || !Array.isArray(parsedData.questions)) {
-           console.error("Invalid Response Structure:", parsedData);
            throw new Error("AIの応答に 'questions' 配列が含まれていません。");
       }
 
@@ -935,8 +1004,6 @@
     document.getElementById('ai-loading-msg').innerHTML = "本番模試(全35問)を作成しています...";
     document.getElementById('ai-loading-sub').innerHTML = "（進行状況: 0 / 28問 AI生成完了）<br><span style="font-size:0.8rem">問題数が多い為、数分かかる場合があります</span>";
 
-    // 安定してAI生成を行うため、1回あたりの生成数を最大4問に分割
-    // 目標AI生成数: 建築14問, 廃棄物8問, 水質6問 (計28問)
     const tasks = [ 
       { g: "建築環境・設備・建築物衛生管理", c: 4 }, 
       { g: "建築環境・設備・建築物衛生管理", c: 4 }, 
@@ -958,12 +1025,10 @@
         try {
             let resData = null;
             try {
-                // 通常モデルで挑戦
                 const res = await callGeminiAPI(prompt, key, tasks[i].c);
                 resData = res.data;
             } catch (err1) {
-                console.warn(`Task ${i} failed with standard model. Trying Lite...`, err1);
-                // 失敗したらLiteモデルで再挑戦
+                console.warn(`Task ${i} failed with standard. Trying Lite...`);
                 const resLite = await callGeminiAPI(prompt, key, tasks[i].c, true);
                 resData = resLite.data;
             }
@@ -974,12 +1039,10 @@
             }));
             comp += tasks[i].c;
             
-            // API制限回避のためのディレイ
             if(i < tasks.length-1) await new Promise(r => setTimeout(r, 2000));
             
         } catch (fatalErr) {
-            console.error(`Task ${i} completely failed. Injecting real past questions as fallback.`, fatalErr);
-            // どんなに再試行してもダメだった場合は、本物の過去問で強制的に補填する（システムクラッシュ防止）
+            console.error(`Task ${i} completely failed. Injecting real past questions as fallback.`);
             let fallbackQs = shuffle(allQuestions.filter(q=>q.genre===tasks[i].g)).slice(0, tasks[i].c);
             fallbackQs.forEach((q, idx) => aiQs.push({
                 ...q, id: `Mock-Fallback-${Date.now()}-${i}-${idx}`, isAi: false, explanation: "【システム自動補填（過去問抽出）】\n" + q.explanation
@@ -994,7 +1057,6 @@
     pastReqs.forEach(r => shuffle(allQuestions.filter(q=>q.genre===r.g)).slice(0, r.c).forEach(q => pastQs.push({...q, id: `Mock-Past-${Date.now()}-${q.id}`, isAi:false})));
 
     let qIdx = 1;
-    // ジャンルごとに出題順を整理（本番同様に建築→廃棄物→水質の順）
     ["建築環境・設備・建築物衛生管理", "廃棄物管理", "水質管理"].forEach(g => {
         shuffle([...aiQs.filter(q=>q.genre===g), ...pastQs.filter(q=>q.genre===g)]).forEach(q => { 
             q.qNum = `問 ${qIdx++}`; 
