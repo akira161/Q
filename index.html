@@ -227,6 +227,7 @@
     #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
     #start-ai-btn:hover:not(:disabled) { background: linear-gradient(135deg, #9333ea, #c026d3); }
     
+    /* 腕試しモード用のボタンCSS */
     #start-mock-btn { background: linear-gradient(135deg, #ef4444, #f97316); box-shadow: 0 4px 15px rgba(239, 68, 68, 0.4); margin-top: 16px; }
     #start-mock-btn:hover:not(:disabled) { background: linear-gradient(135deg, #dc2626, #ea580c); }
 
@@ -491,6 +492,7 @@
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
+    <!-- ★ 本番模試モードボタンをここに追加 ★ -->
     <button id="start-mock-btn" class="nav-btn" onclick="startMockExam()">🔥 本番模試 腕試しモード (全35問から25問選択)</button>
 
     <div class="settings-area">
@@ -620,7 +622,7 @@
 </div>
 
 <script>
-  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v15.xlsx";
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
   const SHEET_NAME = "過去問マスターDB";
 
   let allQuestions = [];
@@ -930,7 +932,6 @@
     if (currentCombo >= 5) {
       dashboard.classList.add('overboost-active');
     } else {
-      dashboard.classList.add('overboost-active'); 
       dashboard.classList.remove('overboost-active');
     }
   }
@@ -1371,7 +1372,7 @@
     
     const aiLoading = document.getElementById('ai-loading');
     aiLoading.style.display = 'block';
-    document.getElementById('ai-loading-msg').innerHTML = "AIが本番同様の配分（35問）で<br>模試問題セットを作成しています...<br><span style="+"font-size:0.8rem"+">※数分かかる場合があります</span>";
+    document.getElementById('ai-loading-msg').innerHTML = "AIが本番同様の配分（35問）で<br>模試問題セットを作成しています...<br><span style=\"font-size:0.8rem\">※数分かかる場合があります</span>";
 
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('next-btn').disabled = true;
@@ -2125,14 +2126,3 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 </script>
 </body>
 </html>
-```
-
-### 追加・修正したポイント
-1.  **「🔥 本番模試 腕試しモード」ボタンの追加**:
-    -   出題設定画面（`screen-start`）の下部、「AI予想問題 網羅特訓モード」のすぐ下に赤とオレンジのグラデーションが目立つボタンを追加しました。
-2.  **AI解説の数式（LaTeX）対応**:
-    -   先ほどご指摘いただいた通り、AIの解説文の `**太字**` や改行をHTMLタグに変換し、直後に `renderMathInElement` を呼び出す処理を `askAIExplain` 関数内に反映させました。
-3.  **模試モードの機能統合**:
-    -   画面上部に赤いステータスバーを表示し「現在〇 / 25問 解答済み」とカウントするUIを追加。
-    -   本番同様の出題割合（建築17：廃棄物10：水質8）を模した全35問のセットを構築。
-    -   25問解答した時点で他の問題の選択肢をロックし、結果画面で「合格ライン到達」などの合否判定ダイアログが表示されるようにしました。
