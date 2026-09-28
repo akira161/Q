@@ -991,26 +991,38 @@
     document.getElementById('mock-status-bar').style.display = 'none';
     document.getElementById('mock-nav').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
-    document.getElementById('ai-loading-msg').innerHTML = "本番形式の35問セットを構築中...<br>（AI生成28問 ＋ 過去問7問）<br><span style='font-size:0.85rem; font-weight:normal;'>※タイムアウトを防ぐため4問ずつ分割して生成します。<br>数十秒〜1分程度お待ちください。</span>";
+    document.getElementById('ai-loading-msg').innerHTML = "本番形式の35問セットを構築中...<br>（AI生成28問 ＋ 過去問7問）<br><span style='font-size:0.85rem; font-weight:normal;'>※タイムアウトを防ぐため数問ずつ分割して生成します。<br>API制限を避けるためゆっくり生成します（1〜2分程度お待ちください）。</span>";
 
     try {
       // 建築環境・設備・衛生管理 (AI: 14問, 過去問: 3問) -> AIは 4, 4, 4, 2 で取得
       const kenchikuAI_1 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey);
+      await new Promise(r => setTimeout(r, 1500)); // Rate limit対策の待機
       const kenchikuAI_2 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey);
+      await new Promise(r => setTimeout(r, 1500));
       const kenchikuAI_3 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey);
+      await new Promise(r => setTimeout(r, 1500));
       const kenchikuAI_4 = await fetchMockAIBatch("建築環境・設備・衛生管理", 2, apiKey);
+      
       const kenchikuPast = getRandomQuestions("建築環境・設備・衛生管理", 3);
       const kenchikuAll = shuffleArray([...kenchikuAI_1, ...kenchikuAI_2, ...kenchikuAI_3, ...kenchikuAI_4, ...kenchikuPast]);
       
+      await new Promise(r => setTimeout(r, 2000)); // ジャンル間の長めの待機
+      
       // 水質管理 (AI: 7問, 過去問: 2問) -> AIは 4, 3 で取得
       const suishitsuAI_1 = await fetchMockAIBatch("水質管理", 4, apiKey);
+      await new Promise(r => setTimeout(r, 1500));
       const suishitsuAI_2 = await fetchMockAIBatch("水質管理", 3, apiKey);
+      
       const suishitsuPast = getRandomQuestions("水質管理", 2);
       const suishitsuAll = shuffleArray([...suishitsuAI_1, ...suishitsuAI_2, ...suishitsuPast]);
 
+      await new Promise(r => setTimeout(r, 2000)); // ジャンル間の長めの待機
+
       // 廃棄物管理 (AI: 7問, 過去問: 2問) -> AIは 4, 3 で取得
       const haikibutsuAI_1 = await fetchMockAIBatch("廃棄物管理", 4, apiKey);
+      await new Promise(r => setTimeout(r, 1500));
       const haikibutsuAI_2 = await fetchMockAIBatch("廃棄物管理", 3, apiKey);
+      
       const haikibutsuPast = getRandomQuestions("廃棄物管理", 2);
       const haikibutsuAll = shuffleArray([...haikibutsuAI_1, ...haikibutsuAI_2, ...haikibutsuPast]);
 
@@ -1032,8 +1044,9 @@
   };
 
   // AIに指定ジャンル・指定問題数を生成させる関数（タイムアウト対策済）
-  async function fetchMockAIBatch(genre, count, apiKey) {
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
+  async function fetchMockAIBatch(genre, count, apiKey, useLiteModel = false) {
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。「${genre}」分野について、本番試験と同等の難易度と形式で、五肢択一問題を【${count}問】作成してください。
 図表を使わずテキストのみで解答できる問題にし、JSONフォーマット（{"questions": [{"question": "...", "options": ["...","...","...","...","..."], "answer": 0, "explanation": "..."}]}）で出力してください。
 問題文や選択肢は、過去問と全く同じにならないよう工夫してください。`;
@@ -1048,7 +1061,13 @@
         const data = await res.json();
         
         if (!res.ok) {
-           if (res.status === 429 || res.status === 503) throw new Error(`API Busy (${res.status})`);
+           if (res.status === 429 || res.status === 503) {
+               if (!useLiteModel) {
+                   console.warn(`API Busy (${res.status}). Switching to Lite model for this batch.`);
+                   return fetchMockAIBatch(genre, count, apiKey, true); // Liteで再試行
+               }
+               throw new Error(`API Busy (${res.status}) - Lite model also failed.`);
+           }
            throw new Error(data.error?.message || "Unknown API Error");
         }
         
@@ -1064,15 +1083,15 @@
           question: q.question,
           options: q.options,
           answer: q.answer,
-          explanation: `【AI解説】\n${q.explanation}`,
+          explanation: `【AI解説】${useLiteModel ? '(Lite)' : ''}\n${q.explanation}`,
           imageUrl: ""
         }));
       } catch (e) {
         console.warn(`Fetch failed for ${genre} (${count} questions), retries left: ${retries}. Error: ${e.message}`);
         retries--;
         if (retries < 0) throw e;
-        // Wait 2 seconds before retrying
-        await new Promise(r => setTimeout(r, 2000));
+        // Wait 3 seconds before retrying
+        await new Promise(r => setTimeout(r, 3000));
       }
     }
   }
