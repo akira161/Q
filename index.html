@@ -492,7 +492,7 @@
     
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
-    <!-- ★ 本番模試モードボタンをここに追加 ★ -->
+    <!-- ★ 本番模試モードボタン ★ -->
     <button id="start-mock-btn" class="nav-btn" onclick="startMockExam()">🔥 本番模試 腕試しモード (全35問から25問選択)</button>
 
     <div class="settings-area">
@@ -557,7 +557,7 @@
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
       <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去の出題傾向を分析し、<br>模試問題を作成しています...</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;" id="ai-loading-sub">少々お待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
@@ -638,8 +638,8 @@
   let curIdx = 0;
   let sessionAnswers = {}; 
   let isAiMode = false; 
-  let isMockMode = false; // 腕試しモードフラグ
-  let mockAnsweredCount = 0; // 模試での回答数
+  let isMockMode = false; 
+  let mockAnsweredCount = 0; 
 
   // ゲームフィケーション用変数の追加
   let currentCombo = 0;
@@ -1342,7 +1342,7 @@
   };
 
   // ----------------------------------------------------
-  // 本番模試モードの実装
+  // 本番模試モードの実装 (安定化版: チャンク分割＆再試行)
   // ----------------------------------------------------
   window.startMockExam = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
@@ -1372,7 +1372,8 @@
     
     const aiLoading = document.getElementById('ai-loading');
     aiLoading.style.display = 'block';
-    document.getElementById('ai-loading-msg').innerHTML = "AIが本番同様の配分（35問）で<br>模試問題セットを作成しています...<br><span style=\"font-size:0.8rem\">※数分かかる場合があります</span>";
+    document.getElementById('ai-loading-msg').innerHTML = "AIが本番同様の配分で<br>模試問題セットを作成しています...";
+    document.getElementById('ai-loading-sub').textContent = "（進行状況: 0 / 28問 生成中）";
 
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('next-btn').disabled = true;
@@ -1384,34 +1385,80 @@
     await generateMockExamQuestions();
   }
 
+  // APIを叩く関数 (エラー時はLiteモデルでリトライする機能付き)
+  async function callGeminiAPI(prompt, apiKey, expectedCount, useLiteModel = false, retries = 2) {
+      const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+      
+      const payload = {
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { response_mime_type: "application/json" }
+      };
+
+      try {
+          const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+          const result = await response.json();
+          
+          if (!response.ok) {
+              // 429(Too Many Requests) や 503(Service Unavailable) の場合はフォールバック
+              if ((response.status === 429 || response.status === 503) && !useLiteModel) {
+                  console.warn(`API制限または高負荷(${response.status})。Liteモデルで再試行します...`);
+                  await new Promise(r => setTimeout(r, 2000)); // 2秒待機
+                  return await callGeminiAPI(prompt, apiKey, expectedCount, true, retries);
+              }
+              throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
+          }
+          
+          const textData = result.candidates[0].content.parts[0].text;
+          const data = JSON.parse(textData);
+          if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
+          return { data: data.questions, isLite: useLiteModel };
+          
+      } catch (e) {
+          if (retries > 0) {
+              console.warn(`生成エラー。残りリトライ回数:${retries}。2秒後に再試行します。`, e);
+              await new Promise(r => setTimeout(r, 2000));
+              // もう一度同じモデル（またはすでにLiteに落ちていればLite）でリトライ
+              return await callGeminiAPI(prompt, apiKey, expectedCount, useLiteModel, retries - 1);
+          } else {
+              throw e;
+          }
+      }
+  }
+
   async function generateMockExamQuestions() {
     const apiKey = localStorage.getItem('my_gemini_api_key');
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent?key=${apiKey}`;
     
-    // 本番の配分: 建築環境 17問, 廃棄物 10問, 水質 8問 = 35問
-    // うち8割(28問)をAI、2割(7問)を過去問から抽出
     // AI作成内訳: 建築14, 廃棄物8, 水質6 (計28)
-    
+    // 負荷軽減のため、一度の生成数を少なく分割する (チャンク分割)
+    const aiTasks = [
+        { genre: "建築環境・設備・建築物衛生管理", count: 7 },
+        { genre: "建築環境・設備・建築物衛生管理", count: 7 },
+        { genre: "廃棄物管理", count: 4 },
+        { genre: "廃棄物管理", count: 4 },
+        { genre: "水質管理", count: 6 }
+    ];
+
+    let generatedAiQs = [];
+    let completedCount = 0;
+
     try {
-        // --- 1. AI問題の生成 ---
-        const aiPrompts = [
-            { genre: "建築環境・設備・建築物衛生管理", count: 14 },
-            { genre: "廃棄物管理", count: 8 },
-            { genre: "水質管理", count: 6 }
-        ];
-
-        let generatedAiQs = [];
-
-        for (let p of aiPrompts) {
+        // --- 1. AI問題の生成 (タスクごとに順次実行) ---
+        for (let i = 0; i < aiTasks.length; i++) {
+            let task = aiTasks[i];
+            
+            // 進行状況の更新
+            document.getElementById('ai-loading-sub').innerHTML = `（進行状況: ${completedCount} / 28問 生成完了）<br><span style="font-size:0.75rem">現在 ${task.genre} の問題を作成中...</span>`;
+            
             // 参考用の過去問を抽出
-            let refPool = allQuestions.filter(q => q.genre === p.genre).map(q => q.question);
-            let refText = shuffleArray(refPool).slice(0, 50).map(q => `・${q}`).join('\n');
+            let refPool = allQuestions.filter(q => q.genre === task.genre).map(q => q.question);
+            let refText = shuffleArray(refPool).slice(0, 40).map(q => `・${q}`).join('\n');
 
             const prompt = `あなたは技術士（衛生工学部門）の試験委員です。
-以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「${p.count}問」生成してください。
+以下の【過去の出題例】を分析し、難易度、文章の形式、専門用語のレベルを模倣した上で、同じ【五肢択一問題】の新しいオリジナル予想問題を、異なる切り口で「${task.count}問」生成してください。
 
 【対象分野】
-${p.genre}
+${task.genre}
 
 【過去の出題例（参考）】
 ${refText}
@@ -1431,33 +1478,35 @@ ${refText}
     }
   ]
 }`;
-            const payload = {
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: { response_mime_type: "application/json" }
-            };
-
-            const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-            const result = await response.json();
             
-            if (!response.ok) throw new Error(`AI生成エラー: ${result.error?.message}`);
+            // API呼び出し (エラー時のフォールバック処理含む)
+            const result = await callGeminiAPI(prompt, apiKey, task.count);
             
-            const data = JSON.parse(result.candidates[0].content.parts[0].text);
-            data.questions.forEach((q, idx) => {
+            result.data.forEach((q, idx) => {
                 generatedAiQs.push({
-                    id: `Mock-AI-${p.genre}-${Date.now()}-${idx}`,
+                    id: `Mock-AI-${task.genre}-${Date.now()}-${idx}`,
                     year: "模試 (AI新規)",
                     qNum: "",
-                    genre: p.genre,
+                    genre: task.genre,
                     subgenre: "総合",
                     question: q.question,
                     options: q.options,
                     answer: q.answer,
-                    explanation: `【AI解説】\n${q.explanation}`,
+                    explanation: `【AI解説】${result.isLite ? ' (Liteモデル使用)' : ''}\n${q.explanation}`,
                     imageUrl: "",
                     isAi: true
                 });
             });
+            
+            completedCount += task.count;
+            
+            // APIの連続呼び出し制限を避けるため、タスク間に少しディレイを入れる
+            if (i < aiTasks.length - 1) {
+                await new Promise(r => setTimeout(r, 1500));
+            }
         }
+
+        document.getElementById('ai-loading-sub').textContent = "（過去問とブレンドして最終調整中...）";
 
         // --- 2. 過去問の抽出 (建築3, 廃棄物2, 水質2 = 7問) ---
         const pastReqs = [
@@ -1508,14 +1557,14 @@ ${refText}
 
     } catch (e) {
         console.error("模試作成エラー", e);
-        alert(`模試の作成に失敗しました。\n\n【詳細】\n${e.message}`);
+        alert(`模試の作成に失敗しました。（サーバーが混雑しているか、API制限に達した可能性があります）\n\n時間を置いてから再度お試しください。\n【詳細】\n${e.message}`);
         window.goToStart();
     }
   }
 
 
   // ----------------------------------------------------
-  // 通常のAIモード
+  // 通常のAIモード (こちらも安定化関数を使用)
   // ----------------------------------------------------
   window.startAIQuiz = async function() {
     const savedKey = localStorage.getItem('my_gemini_api_key');
@@ -1539,19 +1588,15 @@ ${refText}
     await generateAIQuestionsBatch();
   }
 
-  async function generateAIQuestionsBatch(useLiteModel = false) {
+  async function generateAIQuestionsBatch() {
     document.getElementById('q-text').style.display = 'none';
     document.getElementById('q-image-container').style.display = 'none';
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
     
-    const aiLoadingMsg = document.getElementById('ai-loading-msg');
-    if (useLiteModel) {
-      aiLoadingMsg.innerHTML = "標準モデルが混雑しているため、<br>軽量モデル(Lite)で予想問題を生成しています...";
-    } else {
-      aiLoadingMsg.innerHTML = "AIが過去問DBを分析し、<br>予想問題を5問生成しています...";
-    }
+    document.getElementById('ai-loading-msg').innerHTML = "AIが過去問DBを分析し、<br>予想問題を5問生成しています...";
+    document.getElementById('ai-loading-sub').textContent = "少々お待ちください";
 
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('next-btn').disabled = true;
@@ -1559,11 +1604,7 @@ ${refText}
     
     const genre = document.getElementById('genre-filter').value;
     const subgenre = document.getElementById('subgenre-filter').value;
-    
     const apiKey = localStorage.getItem('my_gemini_api_key');
-    
-    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
     let topicHint = "衛生工学全般";
     if (genre && genre !== "all") {
@@ -1605,64 +1646,38 @@ ${refText}
   ]
 }`;
 
-    const payload = {
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: {
-          response_mime_type: "application/json"
-      }
-    };
-
     try {
-      const response = await fetch(apiUrl, { 
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' }, 
-        body: JSON.stringify(payload) 
+      // 共通化されたAPI呼び出し関数を使用
+      const result = await callGeminiAPI(prompt, apiKey, 5);
+      
+      const startIndex = filteredQuestions.length;
+      result.data.forEach((qData, idx) => {
+          filteredQuestions.push({
+            id: "AI-" + Date.now() + "-" + idx,
+            year: "AI生成予想",
+            qNum: `Q${idx+1}`,
+            genre: genre !== "all" ? genre : "AI総合",
+            subgenre: subgenre !== "all" ? subgenre : "網羅的",
+            question: qData.question,
+            options: qData.options,
+            answer: qData.answer,
+            explanation: `【AIによる解説】${result.isLite ? ' (Liteモデル)' : ''}\n${qData.explanation}`,
+            imageUrl: "",
+            isAi: true
+          });
       });
-      
-      const result = await response.json();
-      
-      if (!response.ok) {
-        if ((response.status === 429 || response.status === 503) && !useLiteModel) {
-            console.warn(`API制限または高負荷(${response.status})を検知。Liteモデルで再試行します...`);
-            return generateAIQuestionsBatch(true);
-        }
-        throw new Error(`[${response.status}] ${result.error?.message || "通信エラー"}`);
-      }
 
-      if (result.candidates && result.candidates[0].content.parts[0].text) {
-        const textData = result.candidates[0].content.parts[0].text;
-        const data = JSON.parse(textData);
-        
-        if (!data.questions || data.questions.length === 0) throw new Error("データが空です");
-        
-        const startIndex = filteredQuestions.length;
-        data.questions.forEach((qData, idx) => {
-            filteredQuestions.push({
-              id: "AI-" + Date.now() + "-" + idx,
-              year: "AI生成予想",
-              qNum: `Q${idx+1}`,
-              genre: genre !== "all" ? genre : "AI総合",
-              subgenre: subgenre !== "all" ? subgenre : "網羅的",
-              question: qData.question,
-              options: qData.options,
-              answer: qData.answer,
-              explanation: `【AIによる解説】${useLiteModel ? ' (Liteモデル)' : ''}\n${qData.explanation}`,
-              imageUrl: "",
-              isAi: true
-            });
-        });
-
-        document.getElementById('ai-loading').style.display = 'none';
-        document.getElementById('q-text').style.display = 'block';
-        document.getElementById('opt-box').style.display = 'flex';
-        document.getElementById('q-source').style.display = 'inline-flex';
-        
-        curIdx = startIndex;
-        renderQuestion();
-      }
+      document.getElementById('ai-loading').style.display = 'none';
+      document.getElementById('q-text').style.display = 'block';
+      document.getElementById('opt-box').style.display = 'flex';
+      document.getElementById('q-source').style.display = 'inline-flex';
+      
+      curIdx = startIndex;
+      renderQuestion();
+      
     } catch(e) {
       console.error("AI問題生成エラー", e);
-      alert(`AI問題の生成に失敗しました。\n\n【詳細】\n${e.message}`);
+      alert(`AI問題の生成に失敗しました。\n\n時間を置いてから再度お試しください。\n【詳細】\n${e.message}`);
       window.goToStart();
     }
   }
