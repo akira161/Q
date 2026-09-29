@@ -240,7 +240,6 @@
     .mock-history-score { font-size: 1.1rem; font-weight: bold; color: var(--primary); }
     .mock-history-actions { display: flex; gap: 8px; align-items: center; }
 
-    /* 使い方ガイド（ヘルプ画面）用のスタイル */
     .help-section { margin-bottom: 24px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
     .help-section h3 { margin-top: 0; color: var(--primary); font-size: 1.1rem; border-bottom: 1px dashed var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
     .help-section p { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; color: var(--text); }
@@ -467,7 +466,19 @@
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
       <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px; text-align: center; line-height: 1.5;">AIが過去問DBを分析し、<br>予想問題を生成しています...</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px; text-align: center;">少々お待ちください</div>
+      
+      <!-- プログレスバーUI -->
+      <div id="ai-progress-container" style="display: none; margin-top: 24px; text-align: left; background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; color: #a855f7; margin-bottom: 8px;">
+          <span id="ai-progress-text">準備中...</span>
+          <span id="ai-progress-count">0 / 28 問</span>
+        </div>
+        <div style="width: 100%; background: var(--border); height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+          <div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); transition: width 0.4s ease;"></div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; text-align: center;">※少々お待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
@@ -561,7 +572,8 @@
     theme: 'light',
     stats: { total: 0, correct: 0 },
     history: {},
-    mockExams: []  };
+    mockExams: []  
+  };
   
   window.onload = async () => {
     try {
@@ -583,7 +595,6 @@
     switchScreen('screen-start');
   }
 
-  // --- 追加: ヘルプ画面を開く処理 ---
   window.openHelp = function() {
     switchScreen('screen-help');
     window.scrollTo(0, 0);
@@ -628,7 +639,8 @@
       const savedData = localStorage.getItem('app_memory');
       if (savedData) {
         userMemory = JSON.parse(savedData);
-        if (!userMemory.mockExams) userMemory.mockExams = [];      }
+        if (!userMemory.mockExams) userMemory.mockExams = [];      
+      }
     } catch (e) {
       console.error("メモリの読み込みエラー", e);
     }
@@ -1075,13 +1087,12 @@
     switchScreen('screen-start');
   };
 
-  // 特定ジャンルの過去問をランダム抽出
   function getRandomQuestions(genre, count) {
     const pool = allQuestions.filter(q => q.genre === genre);
     return shuffleArray([...pool]).slice(0, count);
   }
 
-  // --- 腕試しモード用のロジック ---
+  // --- 腕試しモード（プログレスバー対応） ---
   window.startMockExam = async function() {
     const apiKey = localStorage.getItem('my_gemini_api_key');
     if (!apiKey) {
@@ -1090,7 +1101,7 @@
 
     window.isViewingPastMock = false;
     isMockMode = true;
-    isAiMode = true; // AI解説なども使えるようにするため
+    isAiMode = true; 
     sessionAnswers = {};
     filteredQuestions = [];
     mockAnsweredCount = 0;
@@ -1102,52 +1113,88 @@
     document.getElementById('q-image-container').style.display = 'none';
     document.getElementById('mock-status-bar').style.display = 'none';
     document.getElementById('mock-nav').style.display = 'none';
+    
+    // ローディングとプログレスバーの表示
     document.getElementById('ai-loading').style.display = 'block';
-    document.getElementById('ai-loading-msg').innerHTML = "本番形式の35問セットを構築中...<br>（AI生成28問 ＋ 過去問7問）<br><span style='font-size:0.85rem; font-weight:normal;'>※タイムアウトを防ぐため数問ずつ分割して生成します。<br>API制限を避けるためゆっくり生成します（1〜2分程度お待ちください）。</span>";
+    document.getElementById('ai-progress-container').style.display = 'block';
+    document.getElementById('ai-loading-msg').innerHTML = "本番形式の35問セットを構築中...<br>（AI生成28問 ＋ 過去問7問）";
+
+    let aiGeneratedCount = 0;
+    const totalAiNeed = 28;
+
+    const updateProgress = (stepMsg, addedCount = 0) => {
+      aiGeneratedCount += addedCount;
+      const percent = Math.round((aiGeneratedCount / totalAiNeed) * 100);
+      document.getElementById('ai-progress-text').textContent = stepMsg;
+      document.getElementById('ai-progress-text').style.color = '#a855f7'; // reset color
+      document.getElementById('ai-progress-count').textContent = `${aiGeneratedCount} / ${totalAiNeed} 問`;
+      document.getElementById('ai-progress-bar').style.width = `${percent}%`;
+    };
+
+    const retryCallback = (retriesLeft, isLite) => {
+      const modelName = isLite ? "軽量(Lite)モデル" : "標準モデル";
+      document.getElementById('ai-progress-text').textContent = `API混雑中... 再試行(${modelName})`;
+      document.getElementById('ai-progress-text').style.color = '#eab308'; // 警告色
+    };
 
     try {
-      // 建築環境・設備・衛生管理 (AI: 14問, 過去問: 3問) -> 重複を避けるため生成済みの問題文を渡す
+      updateProgress("「建築環境・設備」を作成中 (1/4)...", 0);
       let kenchikuPrev = "";
       
-      const kenchikuAI_1 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev);
+      const kenchikuAI_1 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_1.length);
       kenchikuPrev += kenchikuAI_1.map(q => "・" + q.question).join("\n") + "\n";
-      await new Promise(r => setTimeout(r, 1500)); // Rate limit対策の待機
+      await new Promise(r => setTimeout(r, 1500)); 
       
-      const kenchikuAI_2 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev);
+      updateProgress("「建築環境・設備」を作成中 (2/4)...", 0);
+      const kenchikuAI_2 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_2.length);
       kenchikuPrev += kenchikuAI_2.map(q => "・" + q.question).join("\n") + "\n";
       await new Promise(r => setTimeout(r, 1500));
       
-      const kenchikuAI_3 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev);
+      updateProgress("「建築環境・設備」を作成中 (3/4)...", 0);
+      const kenchikuAI_3 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_3.length);
       kenchikuPrev += kenchikuAI_3.map(q => "・" + q.question).join("\n") + "\n";
       await new Promise(r => setTimeout(r, 1500));
       
-      const kenchikuAI_4 = await fetchMockAIBatch("建築環境・設備・衛生管理", 2, apiKey, false, kenchikuPrev);
+      updateProgress("「建築環境・設備」を作成中 (4/4)...", 0);
+      const kenchikuAI_4 = await fetchMockAIBatch("建築環境・設備・衛生管理", 2, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("ジャンル切替の待機中...", kenchikuAI_4.length);
       
       const kenchikuPast = getRandomQuestions("建築環境・設備・衛生管理", 3);
       const kenchikuAll = shuffleArray([...kenchikuAI_1, ...kenchikuAI_2, ...kenchikuAI_3, ...kenchikuAI_4, ...kenchikuPast]);
       
-      await new Promise(r => setTimeout(r, 2000)); // ジャンル間の長めの待機
+      await new Promise(r => setTimeout(r, 2000)); 
       
-      // 水質管理 (AI: 7問, 過去問: 2問)
+      // 水質管理
+      updateProgress("「水質管理」を作成中 (1/2)...", 0);
       let suishitsuPrev = "";
-      const suishitsuAI_1 = await fetchMockAIBatch("水質管理", 4, apiKey, false, suishitsuPrev);
+      const suishitsuAI_1 = await fetchMockAIBatch("水質管理", 4, apiKey, false, suishitsuPrev, retryCallback);
+      updateProgress("インターバル待機中...", suishitsuAI_1.length);
       suishitsuPrev += suishitsuAI_1.map(q => "・" + q.question).join("\n") + "\n";
       await new Promise(r => setTimeout(r, 1500));
       
-      const suishitsuAI_2 = await fetchMockAIBatch("水質管理", 3, apiKey, false, suishitsuPrev);
+      updateProgress("「水質管理」を作成中 (2/2)...", 0);
+      const suishitsuAI_2 = await fetchMockAIBatch("水質管理", 3, apiKey, false, suishitsuPrev, retryCallback);
+      updateProgress("ジャンル切替の待機中...", suishitsuAI_2.length);
       
       const suishitsuPast = getRandomQuestions("水質管理", 2);
       const suishitsuAll = shuffleArray([...suishitsuAI_1, ...suishitsuAI_2, ...suishitsuPast]);
 
-      await new Promise(r => setTimeout(r, 2000)); // ジャンル間の長めの待機
+      await new Promise(r => setTimeout(r, 2000)); 
 
-      // 廃棄物管理 (AI: 7問, 過去問: 2問)
+      // 廃棄物管理
+      updateProgress("「廃棄物管理」を作成中 (1/2)...", 0);
       let haikibutsuPrev = "";
-      const haikibutsuAI_1 = await fetchMockAIBatch("廃棄物管理", 4, apiKey, false, haikibutsuPrev);
+      const haikibutsuAI_1 = await fetchMockAIBatch("廃棄物管理", 4, apiKey, false, haikibutsuPrev, retryCallback);
+      updateProgress("インターバル待機中...", haikibutsuAI_1.length);
       haikibutsuPrev += haikibutsuAI_1.map(q => "・" + q.question).join("\n") + "\n";
       await new Promise(r => setTimeout(r, 1500));
       
-      const haikibutsuAI_2 = await fetchMockAIBatch("廃棄物管理", 3, apiKey, false, haikibutsuPrev);
+      updateProgress("「廃棄物管理」を作成中 (2/2)...", 0);
+      const haikibutsuAI_2 = await fetchMockAIBatch("廃棄物管理", 3, apiKey, false, haikibutsuPrev, retryCallback);
+      updateProgress("全問題の準備完了！", haikibutsuAI_2.length);
       
       const haikibutsuPast = getRandomQuestions("廃棄物管理", 2);
       const haikibutsuAll = shuffleArray([...haikibutsuAI_1, ...haikibutsuAI_2, ...haikibutsuPast]);
@@ -1169,8 +1216,8 @@
     }
   };
 
-  // AIに指定ジャンル・指定問題数を生成させる関数（重複回避ロジック・タイムアウト対策済）
-  async function fetchMockAIBatch(genre, count, apiKey, useLiteModel = false, previousQuestionsText = "") {
+  // AIに指定ジャンル・指定問題数を生成させる関数（リトライ対応）
+  async function fetchMockAIBatch(genre, count, apiKey, useLiteModel = false, previousQuestionsText = "", onRetry = null) {
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
     
@@ -1185,7 +1232,6 @@
 
     const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
     
-    // リトライロジックを追加
     let retries = 2;
     while (retries >= 0) {
       try {
@@ -1196,7 +1242,8 @@
            if (res.status === 429 || res.status === 503) {
                if (!useLiteModel) {
                    console.warn(`API Busy (${res.status}). Switching to Lite model for this batch.`);
-                   return fetchMockAIBatch(genre, count, apiKey, true, previousQuestionsText); // Liteで再試行
+                   if (onRetry) onRetry(retries, true);
+                   return fetchMockAIBatch(genre, count, apiKey, true, previousQuestionsText, onRetry); 
                }
                throw new Error(`API Busy (${res.status}) - Lite model also failed.`);
            }
@@ -1222,13 +1269,12 @@
         console.warn(`Fetch failed for ${genre} (${count} questions), retries left: ${retries}. Error: ${e.message}`);
         retries--;
         if (retries < 0) throw e;
-        // Wait 3 seconds before retrying
+        if (onRetry) onRetry(retries, useLiteModel);
         await new Promise(r => setTimeout(r, 3000));
       }
     }
   }
 
-  // 腕試しモード用のナビゲーション構築
   function initMockNav() {
     const nav = document.getElementById('mock-nav');
     nav.innerHTML = '';
@@ -1336,6 +1382,7 @@
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
+    document.getElementById('ai-progress-container').style.display = 'none'; // 5問生成時はプログレスバー非表示
     
     const aiLoadingMsg = document.getElementById('ai-loading-msg');
     if (useLiteModel) {
@@ -1517,7 +1564,6 @@ ${refText}
           if (idx === q.answer) btn.classList.add("correct");
           if (sessionAnswers[q.id] === idx && idx !== q.answer) btn.classList.add("wrong");
         } else {
-          // If in mock mode and 25 questions are already answered, disable other options
           if (isMockMode && mockAnsweredCount >= MAX_MOCK_SELECT) {
              btn.disabled = true;
           } else {
@@ -1586,7 +1632,6 @@ ${refText}
     const q = filteredQuestions[curIdx];
     if(sessionAnswers.hasOwnProperty(q.id)) return;
     
-    // 腕試しモード時の25問制限ロジック
     if (isMockMode && !sessionAnswers.hasOwnProperty(q.id)) {
       if (mockAnsweredCount >= MAX_MOCK_SELECT) {
         alert("すでに25問選択済みです。他の問題の解答を変更することはできません。");
@@ -1597,7 +1642,7 @@ ${refText}
 
     sessionAnswers[q.id] = selectedIdx; 
     
-    if (!isAiMode && !isMockMode) { // AI or Mock mode doesn't save to normal history yet
+    if (!isAiMode && !isMockMode) { 
       if (!userMemory.history[q.id]) {
         userMemory.history[q.id] = { c: 0, w: 0 };
       }
@@ -1727,7 +1772,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 
     const count = questionsToEval.length;
     
-    // In mock mode, calculate rate against 25 even if they answered less
     const denom = isMockMode ? MAX_MOCK_SELECT : count; 
     const rate = denom > 0 ? Math.round((correctCount / denom) * 100) : 0;
     
@@ -1743,7 +1787,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       }
       document.getElementById("score-detail").innerHTML = `${correctCount} / ${denom} 問 正解` + mockEvalText;
 
-      // 新規の腕試し結果を保存
       if (!window.isViewingPastMock) {
         const now = new Date();
         const yyyy = now.getFullYear();
@@ -1761,7 +1804,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         };
         
         userMemory.mockExams.push(mockRecord);
-        // 直近10件を残す
         if (userMemory.mockExams.length > 10) {
           userMemory.mockExams.shift();
         }
@@ -1770,7 +1812,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     }
 
     document.querySelector('input[name="res-filter"][value="all"]').checked = true;
-    window.renderHistoryUI(filteredQuestions); // 解かなかった問題も含めてすべて渡す
+    window.renderHistoryUI(filteredQuestions); 
 
     const backBtn = document.getElementById('result-back-btn');
     if (window.isViewingPastMock) {
@@ -1792,7 +1834,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     if (!userMemory.mockExams || userMemory.mockExams.length === 0) {
       container.innerHTML = '<div class="empty-msg" style="padding: 40px 20px;">保存された模擬試験の履歴はありません。</div>';
     } else {
-      // 降順（新しいものが上）
       const reversedExams = [...userMemory.mockExams].reverse();
       reversedExams.forEach(exam => {
         const item = document.createElement('div');
@@ -1826,7 +1867,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 
     window.isViewingPastMock = true;
     isMockMode = true;
-    isAiMode = true; // 過去のAI解説を表示するため
+    isAiMode = true; 
     filteredQuestions = exam.questions;
     sessionAnswers = exam.answers;
     mockAnsweredCount = Object.keys(sessionAnswers).length;
@@ -1838,7 +1879,7 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     if (confirm("この履歴を削除してもよろしいですか？")) {
       userMemory.mockExams = userMemory.mockExams.filter(e => e.id !== mockId);
       saveUserData();
-      window.openMockHistory(); // 再描画
+      window.openMockHistory(); 
     }
   };
 
@@ -1858,7 +1899,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       const userAnsIdx = isAnswered ? sessionAnswers[q.id] : -1;
       const isCorrect = isAnswered && userAnsIdx === q.answer;
       
-      // "wrong"フィルターの場合、正解した問題のみスキップし、不正解・未回答を表示する
       if (filterMode === 'wrong' && isCorrect) return;
       
       displayedCount++;
