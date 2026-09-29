@@ -212,8 +212,11 @@
     .hi-mark { font-weight: bold; font-size: 1.1rem; padding: 2px 8px; border-radius: 4px; }
     .hi-correct { border-left: 4px solid var(--success-text); }
     .hi-wrong { border-left: 4px solid var(--danger-text); }
+    .hi-unanswered { border-left: 4px solid var(--text-muted); }
     .hi-correct .hi-mark { background: var(--success-bg); color: var(--success-text); }
     .hi-wrong .hi-mark { background: var(--danger-bg); color: var(--danger-text); }
+    .hi-unanswered .hi-mark { background: var(--border); color: var(--text); }
+    
     .ans-row { display: flex; gap: 8px; }
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
@@ -224,6 +227,18 @@
 
     .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
     .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+    
+    .mock-history-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+    .mock-history-item { 
+      display: flex; justify-content: space-between; align-items: center; 
+      padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); 
+      background: var(--card); transition: 0.2s;
+    }
+    .mock-history-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .mock-history-info { display: flex; flex-direction: column; gap: 4px; }
+    .mock-history-date { font-size: 0.85rem; color: var(--text-muted); }
+    .mock-history-score { font-size: 1.1rem; font-weight: bold; color: var(--primary); }
+    .mock-history-actions { display: flex; gap: 8px; align-items: center; }
   </style>
 </head>
 <body>
@@ -332,6 +347,9 @@
     <button id="start-mock-btn" class="nav-btn" onclick="startMockExam()" style="background: linear-gradient(135deg, #f59e0b, #ea580c); margin-top: 16px;">
       🏆 腕試しモード (本番形式: 35問中25問選択)
     </button>
+    <button class="nav-btn secondary" onclick="openMockHistory()" style="margin-top: 12px;">
+      📊 過去の腕試し結果を見る
+    </button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -424,14 +442,25 @@
     
     <div class="history-filter">
       <label><input type="radio" name="res-filter" value="all" checked onchange="renderHistoryUI()"><span>すべて表示</span></label>
-      <label><input type="radio" name="res-filter" value="wrong" onchange="renderHistoryUI()"><span>不正解のみ</span></label>
+      <label><input type="radio" name="res-filter" value="wrong" onchange="renderHistoryUI()"><span>不正解・未回答</span></label>
     </div>
 
     <div id="history-list" class="history-list">
       <!-- 履歴がここに入る -->
     </div>
     
-    <button class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
+    <button id="result-back-btn" class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
+  </div>
+
+  <div id="screen-mock-history" class="screen">
+    <h2>腕試しモード 履歴</h2>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; text-align: center;">
+      ※直近10件までの履歴が保存されます。
+    </div>
+    <div id="mock-history-container" class="mock-history-list">
+      <!-- 履歴リストがここに入る -->
+    </div>
+    <button class="nav-btn secondary" onclick="goToStart()" style="margin-top: 24px;">設定画面に戻る</button>
   </div>
 
 </div>
@@ -462,8 +491,8 @@
   let userMemory = {
     theme: 'light',
     stats: { total: 0, correct: 0 },
-    history: {} 
-  };
+    history: {},
+    mockExams: []  };
   
   window.onload = async () => {
     try {
@@ -524,7 +553,7 @@
       const savedData = localStorage.getItem('app_memory');
       if (savedData) {
         userMemory = JSON.parse(savedData);
-      }
+        if (!userMemory.mockExams) userMemory.mockExams = [];      }
     } catch (e) {
       console.error("メモリの読み込みエラー", e);
     }
@@ -964,6 +993,13 @@
     document.getElementById(screenId).classList.add('active');
   }
 
+  window.goToStart = function() {
+    window.isViewingPastMock = false;
+    updateMemoryUI();
+    updateFilterUI();
+    switchScreen('screen-start');
+  };
+
   // 特定ジャンルの過去問をランダム抽出
   function getRandomQuestions(genre, count) {
     const pool = allQuestions.filter(q => q.genre === genre);
@@ -977,6 +1013,7 @@
       alert("APIキーを保存してください。"); return;
     }
 
+    window.isViewingPastMock = false;
     isMockMode = true;
     isAiMode = true; // AI解説なども使えるようにするため
     sessionAnswers = {};
@@ -1145,6 +1182,7 @@
 
   window.startQuiz = function() {
     if (currentTargetQuestions.length === 0) return;
+    window.isViewingPastMock = false;
     isMockMode = false;
     isAiMode = false;
     let questionsPool = [...currentTargetQuestions];
@@ -1183,6 +1221,7 @@
       return;
     }
 
+    window.isViewingPastMock = false;
     isMockMode = false;
     isAiMode = true;
     sessionAnswers = {};
@@ -1582,12 +1621,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     }
   }
 
-  window.goToStart = function() {
-    updateMemoryUI(); 
-    switchScreen('screen-start');
-    window.scrollTo(0, 0);
-  }
-
   window.showResults = function() {
     let correctCount = 0;
     const questionsToEval = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
@@ -1606,26 +1639,117 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     document.getElementById("score-text").textContent = `${rate}%`;
     document.getElementById("score-detail").textContent = `${correctCount} / ${denom} 問 正解`;
 
+    let mockEvalText = "";
     if (isMockMode) {
-      let mockEvalText = "";
       if (rate >= 60) {
         mockEvalText = "<div style='color: var(--success-text); margin-top:12px;'>🎉 合格ライン（60%以上）に達しています！</div>";
       } else {
         mockEvalText = "<div style='color: var(--trend-text); margin-top:12px;'>💪 合格ラインまであと少し！復習しましょう。</div>";
       }
-      document.getElementById("score-detail").innerHTML += mockEvalText;
+      document.getElementById("score-detail").innerHTML = `${correctCount} / ${denom} 問 正解` + mockEvalText;
+
+      // 新規の腕試し結果を保存
+      if (!window.isViewingPastMock) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        
+        const mockRecord = {
+          id: "mock_" + now.getTime(),
+          date: `${yyyy}/${MM}/${dd} ${hh}:${mm}`,
+          score: { correct: correctCount, total: denom, rate: rate },
+          questions: filteredQuestions,
+          answers: sessionAnswers
+        };
+        
+        userMemory.mockExams.push(mockRecord);
+        // 直近10件を残す
+        if (userMemory.mockExams.length > 10) {
+          userMemory.mockExams.shift();
+        }
+        saveUserData();
+      }
     }
 
     document.querySelector('input[name="res-filter"][value="all"]').checked = true;
-    window.renderHistoryUI(questionsToEval);
+    window.renderHistoryUI(filteredQuestions); // 解かなかった問題も含めてすべて渡す
+
+    const backBtn = document.getElementById('result-back-btn');
+    if (window.isViewingPastMock) {
+      backBtn.textContent = '履歴一覧に戻る';
+      backBtn.onclick = window.openMockHistory;
+    } else {
+      backBtn.textContent = '設定・成績画面に戻る';
+      backBtn.onclick = window.goToStart;
+    }
 
     switchScreen('screen-result');
     window.scrollTo(0, 0);
   }
 
+  window.openMockHistory = function() {
+    const container = document.getElementById('mock-history-container');
+    container.innerHTML = '';
+
+    if (!userMemory.mockExams || userMemory.mockExams.length === 0) {
+      container.innerHTML = '<div class="empty-msg" style="padding: 40px 20px;">保存された模擬試験の履歴はありません。</div>';
+    } else {
+      // 降順（新しいものが上）
+      const reversedExams = [...userMemory.mockExams].reverse();
+      reversedExams.forEach(exam => {
+        const item = document.createElement('div');
+        item.className = 'mock-history-item';
+        
+        const isPass = exam.score.rate >= 60;
+        const scoreColor = isPass ? 'var(--success-text)' : 'var(--trend-text)';
+
+        item.innerHTML = `
+          <div class="mock-history-info">
+            <span class="mock-history-date">📅 ${exam.date}</span>
+            <span class="mock-history-score" style="color: ${scoreColor}">${exam.score.rate}% (${exam.score.correct}/${exam.score.total}問)</span>
+          </div>
+          <div class="mock-history-actions">
+            <button class="nav-btn" style="padding: 8px 16px; font-size: 0.85rem; width: auto;" onclick="viewPastMock('${exam.id}')">詳細を見る</button>
+            <button class="icon-btn" style="border: none; color: var(--danger-text);" onclick="deleteMockRecord('${exam.id}')" title="削除">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    switchScreen('screen-mock-history');
+  };
+
+  window.viewPastMock = function(mockId) {
+    const exam = userMemory.mockExams.find(e => e.id === mockId);
+    if (!exam) return;
+
+    window.isViewingPastMock = true;
+    isMockMode = true;
+    isAiMode = true; // 過去のAI解説を表示するため
+    filteredQuestions = exam.questions;
+    sessionAnswers = exam.answers;
+    mockAnsweredCount = Object.keys(sessionAnswers).length;
+
+    window.showResults();
+  };
+
+  window.deleteMockRecord = function(mockId) {
+    if (confirm("この履歴を削除してもよろしいですか？")) {
+      userMemory.mockExams = userMemory.mockExams.filter(e => e.id !== mockId);
+      saveUserData();
+      window.openMockHistory(); // 再描画
+    }
+  };
+
   window.renderHistoryUI = function(questions = null) {
     if (!questions) {
-        questions = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
+        questions = filteredQuestions;
     }
     
     const historyList = document.getElementById("history-list");
@@ -1635,18 +1759,31 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     let displayedCount = 0;
 
     questions.forEach((q, index) => {
-      const userAnsIdx = sessionAnswers[q.id];
-      const isCorrect = userAnsIdx === q.answer;
+      const isAnswered = sessionAnswers.hasOwnProperty(q.id);
+      const userAnsIdx = isAnswered ? sessionAnswers[q.id] : -1;
+      const isCorrect = isAnswered && userAnsIdx === q.answer;
       
+      // "wrong"フィルターの場合、正解した問題のみスキップし、不正解・未回答を表示する
       if (filterMode === 'wrong' && isCorrect) return;
+      
       displayedCount++;
 
       const item = document.createElement("div");
-      item.className = `history-item ${isCorrect ? 'hi-correct' : 'hi-wrong'}`;
-      const userAnsText = userAnsIdx !== undefined ? q.options[userAnsIdx] : "未回答";
+      
+      let statusClass = 'hi-unanswered';
+      let markText = '未回答';
+      let userAnsColor = 'var(--text-muted)';
+      
+      if (isAnswered) {
+          statusClass = isCorrect ? 'hi-correct' : 'hi-wrong';
+          markText = isCorrect ? '〇 正解' : '× 不正解';
+          userAnsColor = isCorrect ? 'var(--success-text)' : 'var(--danger-text)';
+      }
+
+      item.className = `history-item ${statusClass}`;
+      const userAnsText = isAnswered ? q.options[userAnsIdx] : "（未回答）";
       const correctAnsText = q.options[q.answer];
 
-      // Find original index if mock mode to display correctly (or just use simple index)
       let displayNum = index + 1;
       if (isMockMode) {
         displayNum = filteredQuestions.findIndex(fq => fq.id === q.id) + 1;
@@ -1655,13 +1792,13 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       item.innerHTML = `
         <div class="hi-header">
           <span>問 ${displayNum} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
-          <span class="hi-mark">${isCorrect ? '〇 正解' : '× 不正解'}</span>
+          <span class="hi-mark">${markText}</span>
         </div>
         <div class="hi-q">${q.question}</div>
         <div class="hi-ans">
           <div class="ans-row">
             <span class="ans-label">あなたの<br>回答:</span>
-            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'};">${userAnsText}</span>
+            <span style="color: ${userAnsColor};">${userAnsText}</span>
           </div>
           ${!isCorrect ? `
           <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
@@ -1669,6 +1806,10 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
             <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
           </div>
           ` : ''}
+          <details style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;" ${!isCorrect ? 'open' : ''}>
+            <summary style="color: var(--primary); font-weight: bold; cursor: pointer; margin-bottom: 6px; outline: none;">📝 解説</summary>
+            <div style="font-size: 0.9rem; white-space: pre-wrap; color: var(--text); line-height: 1.6;">${q.explanation}</div>
+          </details>
         </div>
       `;
       historyList.appendChild(item);
