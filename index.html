@@ -10,6 +10,21 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Markdownパースと数式(LaTeX)描画用のライブラリを追加 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
   <style>
     :root {
       --primary: #4338ca;
@@ -189,7 +204,17 @@
     
     #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 8px; background: rgba(168, 85, 247, 0.05); display: none; animation: fadeIn 0.4s; }
     .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
-    #ai-explain-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; }
+    
+    /* マークダウン・数式表示用のスタイル */
+    .md-content { font-size: 0.95rem; line-height: 1.6; white-space: normal; }
+    .md-content p { margin-top: 0; margin-bottom: 12px; }
+    .md-content h1, .md-content h2, .md-content h3, .md-content h4 { margin-top: 20px; margin-bottom: 10px; color: var(--primary); font-weight: bold;}
+    .md-content h3 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 4px;}
+    .md-content h4 { font-size: 1rem; }
+    .md-content ul, .md-content ol { padding-left: 20px; margin-bottom: 12px; }
+    .md-content li { margin-bottom: 4px; }
+    .md-content blockquote { border-left: 4px solid var(--border); margin: 0 0 12px 0; padding-left: 12px; color: var(--text-muted); background: var(--input-bg); padding-top: 4px; padding-bottom: 4px; border-radius: 0 4px 4px 0;}
+    .md-content code { background: var(--border); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
 
     .controls { display: flex; gap: 12px; margin-top: 32px; }
     .controls .nav-btn.secondary { flex: 0.4; }
@@ -487,7 +512,7 @@
 
     <div class="explanation-box" id="exp-box">
       <div class="result-status" id="res-status"></div>
-      <div id="exp-text"></div>
+      <div id="exp-text" class="md-content"></div>
       
       <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
       
@@ -501,7 +526,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           AI詳細解説
         </div>
-        <div id="ai-explain-text"></div>
+        <div id="ai-explain-text" class="md-content"></div>
       </div>
     </div>
 
@@ -671,6 +696,19 @@
     applyTheme();
     saveUserData(); 
   };
+
+  // --- MarkdownとLaTeXのレンダリング用関数 ---
+  marked.setOptions({ breaks: true, gfm: true }); // 改行を<br>に変換
+  
+  async function renderContent(text, elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const html = DOMPurify.sanitize(marked.parse(text));
+      el.innerHTML = html;
+      if (window.MathJax && window.MathJax.typesetPromise) {
+          try { await MathJax.typesetPromise([el]); } catch (err) { console.error("MathJax error:", err); }
+      }
+  }
 
   function getChartColors() {
     const isDarkMode = userMemory.theme === 'dark';
@@ -1228,7 +1266,8 @@
 
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。「${genre}」分野について、本番試験と同等の難易度と形式で、五肢択一問題を【${count}問】作成してください。
 図表を使わずテキストのみで解答できる問題にし、JSONフォーマット（{"questions": [{"question": "...", "options": ["...","...","...","...","..."], "answer": 0, "explanation": "..."}]}）で出力してください。
-問題文や選択肢は、過去問と全く同じにならないよう工夫してください。${avoidPrompt}`;
+問題文や選択肢は、過去問と全く同じにならないよう工夫してください。
+※重要：解説にはMarkdown記法（見出し、太字など）を使い、数式が含まれる場合はLaTeX記法（インラインは $...$ 、ブロックは $$...$$）を使用してください。${avoidPrompt}`;
 
     const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
     
@@ -1430,6 +1469,7 @@ ${refText}
 【指示】
 ・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
 ・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
+・解説文はMarkdown記法（見出し、太字など）を用いて構造化し、数式を使用する場合はLaTeX記法（インラインは $...$、ブロックは $$...$$）で記述してください。
 
 以下のJSONフォーマットで出力してください。
 {
@@ -1584,7 +1624,9 @@ ${refText}
       const isCorrect = sessionAnswers[q.id] === q.answer;
       const resStatus = document.getElementById('res-status');
       resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
-      document.getElementById('exp-text').textContent = q.explanation;
+      
+      // MarkdownとLaTeXをレンダリングして表示
+      renderContent(q.explanation, 'exp-text');
       document.getElementById('exp-box').classList.add('show');
       
       if (!isAiMode || isMockMode) {
@@ -1692,6 +1734,10 @@ ${refText}
     const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
 以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを詳細に解説してください。
 
+※出力形式についての指示：
+- 見出し（### など）、太字（**文字**）、箇条書き等のMarkdown記法を用いて、読みやすく構造化してください。
+- 数式を使用する場合は、必ずLaTeX記法を用い、インライン数式は $...$ 、ブロック数式は $$...$$ で囲んでください。
+
 【問題文】
 ${q.question}
 
@@ -1726,8 +1772,11 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         let aiText = result.candidates[0].content.parts[0].text;
         
         loading.style.display = "none";
-        resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
         resultBox.style.display = "block";
+        
+        // MarkdownとLaTeXをレンダリングして表示
+        const textToRender = useLiteModel ? `**[Liteモデルによる解説]**\n\n${aiText}` : aiText;
+        renderContent(textToRender, 'ai-explain-text');
       }
     } catch(e) {
       console.error("AI解説生成エラー", e);
@@ -1943,12 +1992,21 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
           ` : ''}
           <details style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;" ${!isCorrect ? 'open' : ''}>
             <summary style="color: var(--primary); font-weight: bold; cursor: pointer; margin-bottom: 6px; outline: none;">📝 解説</summary>
-            <div style="font-size: 0.9rem; white-space: pre-wrap; color: var(--text); line-height: 1.6;">${q.explanation}</div>
+            <div class="hist-exp-content md-content"></div>
           </details>
         </div>
       `;
       historyList.appendChild(item);
+      
+      // 履歴内の解説もMarkdownとしてパース
+      const expContainer = item.querySelector('.hist-exp-content');
+      expContainer.innerHTML = DOMPurify.sanitize(marked.parse(q.explanation));
     });
+    
+    // リスト生成後に履歴全体の数式をレンダリング
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([historyList]).catch(err => console.error(err));
+    }
 
     if (displayedCount === 0) {
       historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。<br>（すべて正解しました！）</div>`;
