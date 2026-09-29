@@ -77,7 +77,7 @@
       transition: background-color 0.3s, box-shadow 0.3s;
     }
     
-    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px;}
+    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;}
     .icon-btn { 
       background: transparent; border: 1px solid var(--border); color: var(--text-muted); 
       cursor: pointer; width: 36px; height: 36px; border-radius: 50%; 
@@ -239,6 +239,18 @@
     .mock-history-date { font-size: 0.85rem; color: var(--text-muted); }
     .mock-history-score { font-size: 1.1rem; font-weight: bold; color: var(--primary); }
     .mock-history-actions { display: flex; gap: 8px; align-items: center; }
+
+    /* 使い方ガイド（ヘルプ画面）用のスタイル */
+    .help-section { margin-bottom: 24px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+    .help-section h3 { margin-top: 0; color: var(--primary); font-size: 1.1rem; border-bottom: 1px dashed var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .help-section p { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; color: var(--text); }
+    .help-section ol, .help-section ul { padding-left: 24px; font-size: 0.95rem; line-height: 1.6; color: var(--text); }
+    .help-section li { margin-bottom: 8px; }
+    .api-link { color: #2563eb; font-weight: bold; text-decoration: underline; word-break: break-all; }
+    .api-link:hover { color: #1d4ed8; }
+    [data-theme="dark"] .api-link { color: #60a5fa; }
+    [data-theme="dark"] .api-link:hover { color: #93c5fd; }
+    .warning-text { color: var(--danger-text); font-size: 0.85rem; font-weight: bold; background: var(--danger-bg); padding: 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); }
   </style>
 </head>
 <body>
@@ -246,6 +258,7 @@
 <div class="container" id="app-container">
   
   <div class="top-bar">
+    <button class="nav-link-btn" onclick="openHelp()" title="使い方・API設定ガイド">❓ 使い方・設定</button>
     <a href="viewer.html" class="nav-link-btn" title="まとめノートを閲覧">📚 まとめ閲覧</a>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
   </div>
@@ -262,6 +275,62 @@
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
     </div>
+  </div>
+
+  <!-- ★ 使い方ガイド画面 ★ -->
+  <div id="screen-help" class="screen">
+    <h2>📖 アプリの使い方ガイド</h2>
+    
+    <div class="help-section">
+      <h3>1. 基本的な使い方（過去問演習）</h3>
+      <p>このアプリは技術士 衛生工学部門の過去問を効率よく学習するためのツールです。</p>
+      <ul>
+        <li><b>フィルター機能:</b> 「年度」「大分類」「小分類」から解きたいジャンルを絞り込めます。</li>
+        <li><b>弱点克服フィルター:</b> 「未回答の問題」や「過去に間違えた問題」だけを優先して出題し、効率的な復習が可能です。</li>
+        <li><b>傾向重視:</b> 出題順序を「傾向重視」にすると、近年よく出題されるテーマが優先的に出題されます。</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>2. AI機能について（予想問題・腕試し）</h3>
+      <p>このアプリの最大の特徴は、Googleの生成AI（Gemini）を活用して<b>「過去問と似た傾向の新しいオリジナル予想問題」</b>を作成できる点です。また、問題の解説をさらに詳しくAIに質問することもできます。</p>
+      <ul>
+        <li><b>AI予想問題 網羅特訓:</b> 選択したジャンルの過去問を分析し、新しい5択問題を自動生成します。</li>
+        <li><b>腕試しモード:</b> 本番試験と同じ配分で「35問中から25問を選んで解答する」模擬試験を受けられます。（約8割がAIによる新規作成問題、残りが過去問で構成されます）</li>
+      </ul>
+      <div class="warning-text" style="margin-top: 12px;">
+        ※AI機能（詳細解説・予想問題・腕試しモード）を利用するには、ご自身で「APIキー」を取得してアプリに設定する必要があります（無料）。詳しくは下記の手順をご覧ください。
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h3>🔑 3. Gemini APIキーの取得と設定方法</h3>
+      <p>AI機能を使うための鍵（APIキー）をGoogleから取得します。取得は無料で、数分で完了します。</p>
+      <ol>
+        <li>Googleアカウントにログインした状態で、以下のサイトにアクセスします。<br>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-link">👉 Google AI Studio (API取得ページ)</a>
+        </li>
+        <li>画面内の <b>「Create API key」</b> または <b>「Get API key」</b> というボタンをクリックします。</li>
+        <li>新しいプロジェクトを作成するか選択し、APIキーを生成します。</li>
+        <li>生成された <b>長い文字列（APIキー）</b> をコピーします。</li>
+        <li>このアプリの「スタート画面」の一番下にある <b>「⚙️ AIモード用設定」</b> の入力欄に貼り付け、「保存」ボタンを押します。</li>
+      </ol>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
+        ※ APIキーはあなたの端末内（ブラウザ）にのみ安全に保存され、外部のサーバーには送信されません。<br>
+        ※ Google Gemini APIの無料枠は非常に大きいため、個人での学習用途で課金されることは実質ありません。
+      </p>
+    </div>
+
+    <div class="help-section">
+      <h3>💾 4. 学習データの保存について</h3>
+      <p>あなたの学習履歴（総正解数、各問題の正誤、腕試しの履歴、APIキーなど）は、<b>お使いの端末のブラウザ内（ローカルストレージ）</b>に自動的に保存されます。</p>
+      <ul>
+        <li>ページを更新（リロード）したり、アプリのHTMLファイルを新しいものにアップデートしても、データは消えずに引き継がれます。</li>
+        <li><b>【注意】</b> ブラウザの「閲覧履歴やCookieをすべて消去する」操作を行うとデータが消えてしまいます。また、別の端末（PCからスマホなど）や別のブラウザアプリで開いた場合は、データは共有されません。</li>
+      </ul>
+    </div>
+
+    <button class="nav-btn" onclick="goToStart()" style="margin-top: 16px;">設定画面に戻る</button>
   </div>
 
   <div id="screen-start" class="screen">
@@ -513,6 +582,12 @@
     loadApiKey();
     switchScreen('screen-start');
   }
+
+  // --- 追加: ヘルプ画面を開く処理 ---
+  window.openHelp = function() {
+    switchScreen('screen-help');
+    window.scrollTo(0, 0);
+  };
 
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
