@@ -519,10 +519,15 @@
         applyGameModeUI();
         updateMemoryUI(); 
         loadApiKey();
+        
+        // 模試データの復元処理を追加
+        restoreMockSession();
+        
         switchScreen('screen-start');
     } catch (e) {
-        console.error("初期化中のエラー:", e);
-        alert("データの解析中にエラーが発生しました。\n正しい形式のExcelファイルか確認してください。");
+        console.error("初期化中のエラー詳細:", e);
+        // エラー内容を具体的に表示するように変更
+        alert(`データの解析中にエラーが発生しました。\n詳細: ${e.message}\n正しい形式のExcelファイルか確認してください。`);
         document.getElementById('loading-content').style.display = 'none';
         document.getElementById('upload-content').style.display = 'block';
     }
@@ -577,13 +582,15 @@
               }
           }
 
-          const block = String(row['大分類(ブロック)'] || '').trim();
-          const sub = String(row['サブジャンル'] || '').trim();
+          const block = String(row['大分類(ブロック)'] || '未分類').trim();
+          const sub = String(row['サブジャンル'] || '未分類').trim();
           const qNumStr = String(row['設問番号'] || `Q${index+1}`).trim();
           
           const options = [];
           for(let i=1; i<=5; i++){
-            const opt = String(row[`選択肢${String.fromCharCode(0x2460 + i - 1)}`] || '').trim();
+            // String()でキャストしてエラーを防ぐ
+            const optVal = row[`選択肢${String.fromCharCode(0x2460 + i - 1)}`];
+            const opt = optVal != null ? String(optVal).trim() : '';
             if(opt) options.push(opt);
           }
           if(options.length === 0) return; // 選択肢がないものは除外
