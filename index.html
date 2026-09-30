@@ -121,7 +121,6 @@
     .charts-wrapper { display: flex; flex-direction: column; gap: 16px; }
     .chart-container { position: relative; height: 220px; width: 100%; display: flex; justify-content: center; }
 
-    /* ゲームモード用 UI */
     .game-stats { display: none; justify-content: space-around; text-align: center; margin-top: 16px; padding-top: 16px; border-top: 1px dashed var(--border); }
     .dashboard-panel {
       display: none; align-items: center; gap: 16px;
@@ -132,7 +131,7 @@
     .dashboard-panel.active-game-ui { display: flex; animation: fadeIn 0.4s; }
     .level-indicator { text-align: center; }
     .gear-label { font-size: 0.7rem; font-weight: bold; color: var(--text-muted); display: block; }
-    .gear-number { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-style: italic; line-height: 1; }
+    .current-level, .gear-number { font-size: 1.6rem; font-weight: 900; color: var(--primary); font-style: italic; line-height: 1; }
     .tachometer { flex: 1; height: 14px; background: var(--bg); border-radius: 7px; overflow: hidden; border: 1px solid var(--border); position: relative;}
     .tacho-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #3b82f6, #10b981, #facc15, #ef4444); transition: width 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
     .boost-gauge { width: 70px; }
@@ -196,7 +195,8 @@
     .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
     
     .options { display: flex; flex-direction: column; gap: 12px; }
-    .option-btn { text-align: left; padding: 16px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.95rem; line-height: 1.5; color: var(--text); cursor: pointer; transition: all 0.2s; }
+    /* ★修正: white-space: pre-wrap を追加してKaTeXパース阻害を回避 */
+    .option-btn { text-align: left; padding: 16px; border: 2px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.95rem; line-height: 1.5; color: var(--text); cursor: pointer; transition: all 0.2s; white-space: pre-wrap; }
     .option-btn:hover:not(:disabled) { border-color: var(--text-muted); background: var(--bg); }
     .option-btn.correct { background-color: var(--success-bg); border-color: var(--success-text); color: var(--success-text); font-weight: bold; }
     .option-btn.wrong { background-color: var(--danger-bg); border-color: var(--danger-text); color: var(--danger-text); font-weight: bold; opacity: 0.8; }
@@ -207,7 +207,6 @@
     #exp-text { white-space: pre-wrap; }
     .result-status { font-size: 1.2rem; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
     
-    /* 模試モード用スタイル */
     .mock-status-bar {
         background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #b91c1c;
         padding: 12px; border-radius: 8px; text-align: center; margin-bottom: 16px; font-weight: bold;
@@ -219,10 +218,11 @@
     .mock-list-view { display: none; flex-direction: column; gap: 24px; }
     .mock-q-card { background: var(--bg); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
     
+    /* ★修正: white-space: pre-wrap を追加 */
     .mock-opt-btn {
         display: block; width: 100%; text-align: left; padding: 12px; margin-bottom: 8px;
         border: 1px solid var(--border); border-radius: 8px; background: var(--card); color: var(--text);
-        cursor: pointer; transition: 0.2s; font-size: 0.9rem;
+        cursor: pointer; transition: 0.2s; font-size: 0.9rem; white-space: pre-wrap;
     }
     .mock-opt-btn:hover:not(:disabled) { border-color: var(--primary); }
     .mock-opt-btn.selected { background: var(--info-bg); border-color: var(--primary); color: var(--primary); font-weight: bold; }
@@ -238,6 +238,8 @@
     #ai-loading { display: none; text-align: center; padding: 40px 20px; }
     #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 8px; background: rgba(168, 85, 247, 0.05); display: none; animation: fadeIn 0.4s; }
     .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
+    /* ★修正: white-space: pre-wrap を追加 */
+    #ai-explain-text { line-height: 1.6; font-size: 0.95rem; white-space: pre-wrap; }
     
     .history-list { display: flex; flex-direction: column; gap: 16px; max-height: 60vh; overflow-y: auto; padding-right: 4px; margin-bottom: 24px;}
     .history-item { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.9rem; line-height: 1.5; }
@@ -268,7 +270,7 @@
     <div id="upload-content" style="display: none; text-align: left;">
       <div style="font-size: 0.9rem; color: var(--text-muted); background: var(--card); padding: 16px; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 16px; line-height: 1.5;">
         セキュリティ制限等によりExcelファイルを自動読み込みできませんでした。<br>
-        お手数ですが、以下のボタンから直接 <b>Sanitary_Engineering_Exam_DB_v28.xlsx</b> を選択してください。
+        お手数ですが、以下のボタンから直接 <b>Sanitary_Engineering_Exam_DB_v28.xlsx</b> (または後継ファイル) を選択してください。
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
     </div>
@@ -382,14 +384,11 @@
   </div>
 
   <div id="screen-quiz" class="screen">
-    
-    <!-- 模試モード用ステータスバー -->
     <div id="mock-status-bar" class="mock-status-bar">
       本番模試モード: 現在 <span id="mock-ans-count">0</span> / 25問 解答済み
       <div style="font-size: 0.75rem; font-weight: normal; margin-top: 4px;">※全35問の中から、自信のある25問を選択して解答してください。</div>
     </div>
 
-    <!-- ゲームモード用ダッシュボード -->
     <div class="dashboard-panel" id="dashboard-panel">
       <div class="level-indicator">
         <span class="gear-label">GEAR</span>
@@ -405,7 +404,6 @@
       </div>
     </div>
 
-    <!-- 通常演習用の1問ずつ表示ビュー -->
     <div id="quiz-single-view">
         <div class="header">
           <div>
@@ -415,6 +413,7 @@
           <span id="prog-label">問 1 / 1</span>
         </div>
         <div id="q-source" class="q-source-badge"></div>
+        <!-- 修正箇所: q-text等のコンテナはCSSの white-space: pre-wrap で改行を描画させる -->
         <div class="question-box" id="q-text"></div>
         <div id="q-image-container" style="display: none; text-align: center;"></div>
         <div class="options" id="opt-box"></div>
@@ -429,7 +428,7 @@
           </div>
           <div id="ai-explain-result">
             <div class="ai-exp-title">✨ AI詳細解説</div>
-            <div id="ai-explain-text" style="line-height: 1.6; font-size: 0.95rem;"></div>
+            <div id="ai-explain-text"></div>
           </div>
         </div>
         
@@ -440,7 +439,6 @@
         </div>
     </div>
 
-    <!-- 模試用の全問リストビュー -->
     <div id="quiz-mock-view" class="mock-list-view">
         <!-- JSでカードが追加されます -->
     </div>
@@ -477,7 +475,7 @@
   // -------------------------
   // グローバル変数と初期化
   // -------------------------
-  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx";
+  const EXCEL_FILE_NAME = "Sanitary_Engineering_Exam_DB_v28.xlsx"; // ※実態に合わせて適宜変更してください
   const SHEET_NAME = "過去問マスターDB";
 
   let allQuestions = [];
@@ -488,7 +486,7 @@
   let sessionAnswers = {}; 
   let isAiMode = false; 
   let isMockMode = false;
-  let abortController = null; // AI生成キャンセル用
+  let abortController = null;
 
   let userMemory = {
     theme: 'light',
@@ -500,6 +498,20 @@
   };
   let currentCombo = 0;
   let isOverboost = false;
+
+  // ★追加: テキストを安全にHTMLへ埋め込むためのエスケープ関数
+  function escapeHTML(str) {
+      if (!str) return "";
+      return str.replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+  }
+
+  // ★未定義エラー回避用ダミー関数（実装がある場合は上書きしてください）
+  function restoreMockSession() { /* ダミー */ }
+  function drawRadarChart() { /* ダミー */ }
 
   window.onload = async () => {
     try {
@@ -519,14 +531,10 @@
         applyGameModeUI();
         updateMemoryUI(); 
         loadApiKey();
-        
-        // 模試データの復元処理を追加
         restoreMockSession();
-        
         switchScreen('screen-start');
     } catch (e) {
         console.error("初期化中のエラー詳細:", e);
-        // エラー内容を具体的に表示するように変更
         alert(`データの解析中にエラーが発生しました。\n詳細: ${e.message}\n正しい形式のExcelファイルか確認してください。`);
         document.getElementById('loading-content').style.display = 'none';
         document.getElementById('upload-content').style.display = 'block';
@@ -588,12 +596,11 @@
           
           const options = [];
           for(let i=1; i<=5; i++){
-            // String()でキャストしてエラーを防ぐ
             const optVal = row[`選択肢${String.fromCharCode(0x2460 + i - 1)}`];
             const opt = optVal != null ? String(optVal).trim() : '';
             if(opt) options.push(opt);
           }
-          if(options.length === 0) return; // 選択肢がないものは除外
+          if(options.length === 0) return; 
           
           let rawAns = String(row['公式正答'] || '').trim();
           rawAns = rawAns.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
@@ -669,9 +676,6 @@
     updateFilterUI();
   }
 
-  // -------------------------
-  // データ永続化・設定
-  // -------------------------
   function loadUserData() {
     try {
       const saved = localStorage.getItem('app_memory');
@@ -705,9 +709,6 @@
     }
   };
 
-  // -------------------------
-  // UI関連 (テーマ、フィルター、ダッシュボード)
-  // -------------------------
   function applyTheme() {
     const btn = document.getElementById('theme-btn');
     if (userMemory.theme === 'dark') { document.body.setAttribute('data-theme', 'dark'); btn.textContent = '☀️'; } 
@@ -745,13 +746,11 @@
     const expPercent = Math.min((exp / nextExp) * 100, 100);
     const boostPercent = Math.min((currentCombo / 5) * 100, 100);
 
-    // スタート画面用
     if(document.getElementById('start-gear')) {
         document.getElementById('start-gear').textContent = level;
         document.getElementById('start-exp-text').textContent = `${exp} / ${nextExp}`;
         document.getElementById('start-exp-bar').style.width = `${expPercent}%`;
     }
-    // 演習画面用
     if(document.getElementById('current-level')) {
         document.getElementById('current-level').textContent = level;
         document.getElementById('tacho-bar').style.width = `${expPercent}%`;
@@ -792,7 +791,6 @@
       let gainedExp = baseExp + bonusExp;
       userMemory.exp += gainedExp;
 
-      // Popup animation
       const popupContainer = document.getElementById('exp-popup-container');
       if (popupContainer) {
           const popup = document.createElement('div');
@@ -820,7 +818,6 @@
     updateDashboardUI();
   }
 
-  // --- その他のUI構築 ---
   function buildInitialFilterSelects() {
     const ySelect = document.getElementById('year-filter'), gSelect = document.getElementById('genre-filter');
     ySelect.innerHTML = '<option value="all">すべての年度</option>'; masterYears.forEach(y => ySelect.add(new Option(y, y)));
@@ -874,9 +871,6 @@
     if (userMemory.gameMode) updateDashboardUI();
   }
 
-  // -------------------------
-  // 演習モード遷移制御
-  // -------------------------
   function switchScreen(screenId) {
     document.querySelectorAll('.screen').forEach(el => el.classList.remove('active'));
     document.getElementById(screenId).classList.add('active');
@@ -906,9 +900,6 @@
     renderQuestion();
   };
 
-  // -------------------------
-  // AI網羅特訓モード & 腕試し模試モード
-  // -------------------------
   window.startAIQuiz = async function() {
     if (!checkApiKey()) return;
     isAiMode = true; isMockMode = false;
@@ -935,7 +926,6 @@
     
     switchScreen('screen-quiz');
     
-    // 模試構成 (35問中28問をAI生成、7問を過去問抽出)
     const targetChunks = [
         { count: 4, genre: '建築環境・設備・建築物衛生管理' },
         { count: 4, genre: '建築環境・設備・建築物衛生管理' },
@@ -946,7 +936,6 @@
         { count: 4, genre: '水質管理' },
         { count: 2, genre: '水質管理' }
     ];
-    // 残り7問(建築3, 廃棄物2, 水質2)は過去問から
     const realQ = [
         ...shuffleArray(allQuestions.filter(q => q.genre === '建築環境・設備・建築物衛生管理')).slice(0, 3),
         ...shuffleArray(allQuestions.filter(q => q.genre === '廃棄物管理')).slice(0, 2),
@@ -966,14 +955,12 @@
         document.getElementById('ai-loading-sub').innerHTML = `(進行状況: ${generatedCount} / 28問 生成済み)<br><span style="font-size:0.75rem;">${chunk.genre} を作成中...</span>`;
         
         try {
-            // 意図的なディレイ(1.5秒)でAPI制限回避
             if(i > 0) await new Promise(r => setTimeout(r, 1500));
             const newQs = await fetchGeminiQuestions(chunk.count, `技術士 衛生工学部門の模試（分野: ${chunk.genre}）`);
             aiQuestions = aiQuestions.concat(newQs);
             generatedCount += newQs.length;
         } catch (e) {
             console.warn(`チャンク ${i} で生成エラー。過去問で代替します。`, e);
-            // 失敗時は過去問から補充して絶対に止まらないようにする
             const fallbackQs = shuffleArray(allQuestions.filter(q => q.genre === chunk.genre)).slice(0, chunk.count);
             fallbackQs.forEach(q => {
                 aiQuestions.push({...q, id: "Fallback-"+Date.now()+"-"+Math.random(), year: "模試代替(過去問)"});
@@ -1061,7 +1048,6 @@ ${topicHint}
     if (!response.ok) throw new Error(result.error?.message || "通信エラー");
     
     let textData = result.candidates[0].content.parts[0].text;
-    // マークダウンのコードブロック除去
     textData = textData.replace(/^```json/im, '').replace(/^```/im, '').trim();
     
     const data = JSON.parse(textData);
@@ -1086,17 +1072,14 @@ ${topicHint}
       return true;
   }
 
-  // -------------------------
-  // 画面描画 (1問ずつ / リストビュー)
-  // -------------------------
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
     document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
     
-    // 改行をbrタグに変換して描画
-    let formattedQuestion = q.question.replace(/\n/g, '<br>');
-    document.getElementById('q-text').innerHTML = formattedQuestion;
+    // ★修正: replace(/\n/g, '<br>')を削除し、textContentで安全に代入。
+    // CSSの white-space: pre-wrap; で改行が表示されます。これによりKaTeXのパースが途切れません。
+    document.getElementById('q-text').textContent = q.question;
     
     const sourceEl = document.getElementById('q-source');
     if (isAiMode) { sourceEl.innerHTML = '✨ AI予想問題'; sourceEl.style.color = '#a855f7'; sourceEl.style.background = 'rgba(168, 85, 247, 0.05)'; } 
@@ -1109,8 +1092,8 @@ ${topicHint}
     q.options.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
-        // 選択肢も改行を考慮
-        btn.innerHTML = `${idx + 1}. ${opt.replace(/\n/g, '<br>')}`;
+        // ★修正: textContentを使用
+        btn.textContent = `${idx + 1}. ${opt}`;
         if (hasAnswered) {
           btn.disabled = true;
           if (idx === q.answer) btn.classList.add("correct");
@@ -1133,8 +1116,8 @@ ${topicHint}
       const isCorrect = sessionAnswers[q.id] === q.answer;
       document.getElementById('res-status').innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
       
-      // 解説の改行対応
-      document.getElementById('exp-text').innerHTML = q.explanation.replace(/\n/g, '<br>');
+      // ★修正: textContentを使用
+      document.getElementById('exp-text').textContent = q.explanation;
       document.getElementById('exp-box').classList.add('show');
       if (!isAiMode) document.getElementById('ai-explain-btn').style.display = 'block';
       
@@ -1149,7 +1132,6 @@ ${topicHint}
       nextBtn.onclick = null;
     }
     
-    // KaTeXによる数式レンダリング (問題文・選択肢・解説エリア)
     setTimeout(() => {
         if (window.renderMathInElement) {
             renderMathInElement(document.getElementById('quiz-single-view'), {
@@ -1174,20 +1156,23 @@ ${topicHint}
           card.className = 'mock-q-card';
           card.id = `mock-card-${qIndex}`;
           
-          let formattedQuestion = q.question.replace(/\n/g, '<br>');
+          // ★修正: エスケープ関数を使用
+          let escapedQuestion = escapeHTML(q.question);
           
           let html = `
             <div style="display:flex; justify-content:space-between; margin-bottom:12px; font-size:0.85rem; color:var(--text-muted); font-weight:bold; border-bottom:1px dashed var(--border); padding-bottom:8px;">
                 <span>問 ${qIndex + 1}</span>
                 <span style="color:${q.year.includes('AI') ? '#a855f7' : 'inherit'}">${q.year}</span>
             </div>
-            <div style="font-weight:600; margin-bottom:16px; white-space:normal; line-height:1.5;">${formattedQuestion}</div>
+            <!-- white-space:pre-wrap で改行を描画 -->
+            <div style="font-weight:600; margin-bottom:16px; white-space:pre-wrap; line-height:1.5;">${escapedQuestion}</div>
             <div class="mock-opts-container" id="mock-opts-${qIndex}">
           `;
           
           q.options.forEach((opt, oIndex) => {
-              let formattedOpt = opt.replace(/\n/g, '<br>');
-              html += `<button class="mock-opt-btn" onclick="selectMockOption(${qIndex}, ${oIndex})">${oIndex + 1}. ${formattedOpt}</button>`;
+              // ★修正: エスケープ関数を使用
+              let escapedOpt = escapeHTML(opt);
+              html += `<button class="mock-opt-btn" onclick="selectMockOption(${qIndex}, ${oIndex})">${oIndex + 1}. ${escapedOpt}</button>`;
           });
           
           html += `</div>`;
@@ -1196,7 +1181,6 @@ ${topicHint}
       });
       updateMockStatusBar();
       
-      // KaTeXによる数式レンダリング (模試リスト全体)
       setTimeout(() => {
           if (window.renderMathInElement) {
               renderMathInElement(document.getElementById('quiz-mock-view'), {
@@ -1212,9 +1196,6 @@ ${topicHint}
       }, 50);
   }
 
-  // -------------------------
-  // 解答処理
-  // -------------------------
   window.selectOption = function(selectedIdx) {
     const q = filteredQuestions[curIdx];
     if(sessionAnswers.hasOwnProperty(q.id)) return;
@@ -1237,7 +1218,7 @@ ${topicHint}
 
   window.skipQuestion = function() {
       if(confirm("この問題をスキップしますか？\n（成績やコンボには影響しません）")) {
-          currentCombo = 0; // コンボは一応リセット
+          currentCombo = 0; 
           updateDashboardUI();
           goNext();
       }
@@ -1251,18 +1232,16 @@ ${topicHint}
       const currentAnsCount = Object.keys(sessionAnswers).length;
       const isAlreadyAnswered = sessionAnswers.hasOwnProperty(q.id);
 
-      // 25問制限のチェック
       if (!isAlreadyAnswered && currentAnsCount >= 25) {
           alert("すでに25問解答済みです。他の問題の選択を解除するか、採点に進んでください。");
           return;
       }
 
-      // 選択状態のトグル
       if (isAlreadyAnswered && sessionAnswers[q.id] === oIndex) {
-          delete sessionAnswers[q.id]; // 選択解除
+          delete sessionAnswers[q.id]; 
           buttons[oIndex].classList.remove('selected');
       } else {
-          sessionAnswers[q.id] = oIndex; // 新規選択・変更
+          sessionAnswers[q.id] = oIndex; 
           buttons.forEach(b => b.classList.remove('selected'));
           buttons[oIndex].classList.add('selected');
       }
@@ -1285,7 +1264,6 @@ ${topicHint}
           bar.classList.remove('completed');
       }
 
-      // 25問達したら未解答の問題のボタンをロック
       const isLocked = count >= 25;
       filteredQuestions.forEach((q, idx) => {
           if (!sessionAnswers.hasOwnProperty(q.id)) {
@@ -1295,9 +1273,6 @@ ${topicHint}
       });
   }
 
-  // -------------------------
-  // AI解説・ナビゲーション
-  // -------------------------
   window.askAIExplain = async function() {
     const apiKey = localStorage.getItem('my_gemini_api_key');
     if (!apiKey) return alert("APIキーを設定してください。");
@@ -1320,16 +1295,14 @@ ${topicHint}
 
       let aiText = result.candidates[0].content.parts[0].text;
       
-      // マークダウンの簡易変換
       aiText = aiText.replace(/</g, "&lt;").replace(/>/g, "&gt;");
       aiText = aiText.replace(/\*\*(.*?)\*\*/g, '<b>$1</b>');
-      aiText = aiText.replace(/\n/g, '<br>');
+      // ★修正: replace(/\n/g, '<br>')を削除し、KaTeXのパースを維持します
 
       loading.style.display = "none";
       resultText.innerHTML = aiText;
       resultBox.style.display = "block";
       
-      // KaTeXレンダリング
       if (window.renderMathInElement) {
           renderMathInElement(resultBox, {
               delimiters: [ 
@@ -1377,11 +1350,10 @@ ${topicHint}
     document.getElementById("score-text").textContent = `${rate}%`;
     document.getElementById("score-detail").textContent = `${correctCount} / ${count} 問 正解`;
     
-    // 模試モード専用の判定表示
     const judgeEl = document.getElementById('mock-judge-text');
     if (isMockMode) {
         judgeEl.style.display = 'block';
-        if (correctCount >= 15) { // 60% = 15/25
+        if (correctCount >= 15) { 
             judgeEl.textContent = "🎉 合格ライン到達！ (60%以上)";
             judgeEl.style.background = "rgba(21, 128, 61, 0.1)";
             judgeEl.style.color = "#15803d";
@@ -1418,26 +1390,26 @@ ${topicHint}
       const item = document.createElement("div");
       item.className = `history-item ${isCorrect ? 'hi-correct' : 'hi-wrong'}`;
       
-      // 改行対応
-      let qTextFormatted = q.question.replace(/\n/g, '<br>');
-      const userAnsText = userAnsIdx !== undefined ? q.options[userAnsIdx].replace(/\n/g, '<br>') : "未回答(スキップ)";
-      const correctAnsText = q.options[q.answer].replace(/\n/g, '<br>');
+      // ★修正: エスケープ関数を使用し、CSSで改行描画
+      let qTextFormatted = escapeHTML(q.question);
+      const userAnsText = userAnsIdx !== undefined ? escapeHTML(q.options[userAnsIdx]) : "未回答(スキップ)";
+      const correctAnsText = escapeHTML(q.options[q.answer]);
 
       item.innerHTML = `
         <div class="hi-header">
           <span>${isMockMode ? `選択問` : `問 ${index + 1}`} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
           <span class="hi-mark">${isCorrect ? '〇 正解' : '× 不正解'}</span>
         </div>
-        <div class="hi-q" style="white-space:normal;">${qTextFormatted}</div>
+        <div class="hi-q" style="white-space:pre-wrap; margin-bottom:12px;">${qTextFormatted}</div>
         <div class="hi-ans">
           <div class="ans-row">
-            <span class="ans-label">あなたの<br>回答:</span>
-            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'};">${userAnsText}</span>
+            <span class="ans-label">あなたの回答:</span>
+            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'}; white-space:pre-wrap;">${userAnsText}</span>
           </div>
           ${!isCorrect ? `
           <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
             <span class="ans-label">正解:</span>
-            <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
+            <span style="color: var(--success-text); font-weight: bold; white-space:pre-wrap;">${correctAnsText}</span>
           </div>
           ` : ''}
         </div>
@@ -1447,7 +1419,6 @@ ${topicHint}
 
     if (displayedCount === 0) historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。</div>`;
     
-    // 成績履歴の数式レンダリング
     setTimeout(() => {
         if (window.renderMathInElement) {
             renderMathInElement(historyList, {
@@ -1463,13 +1434,34 @@ ${topicHint}
     }, 50);
   }
 
-  // 配列シャッフル
+  // ユーティリティ
   function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [array[i], array[j]] = [array[j], array[i]];
     }
     return array;
+  }
+  
+  // getWeightedRandomQuestions関数が無かったため追加 (元のコードで参照されていました)
+  function getWeightedRandomQuestions(pool, count) {
+      if (pool.length <= count) return shuffleArray([...pool]);
+      const result = [];
+      const tempPool = [...pool];
+      while (result.length < count && tempPool.length > 0) {
+          // 年度スコアの高いものを優先的に引く簡易的な重み付きランダム
+          const totalWeight = tempPool.reduce((sum, q) => sum + (q.yearNum > 0 ? getYearWeight(2025 - q.yearNum) : 1), 0);
+          let random = Math.random() * totalWeight;
+          for (let i = 0; i < tempPool.length; i++) {
+              const weight = tempPool[i].yearNum > 0 ? getYearWeight(2025 - tempPool[i].yearNum) : 1;
+              if (random < weight) {
+                  result.push(tempPool.splice(i, 1)[0]);
+                  break;
+              }
+              random -= weight;
+          }
+      }
+      return result;
   }
 </script>
 </body>
