@@ -10,6 +10,21 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <!-- Markdownパースと数式(LaTeX)描画用のライブラリを追加 -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
+  <script>
+    MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+
   <style>
     :root {
       --primary: #4338ca;
@@ -77,7 +92,7 @@
       transition: background-color 0.3s, box-shadow 0.3s;
     }
     
-    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px;}
+    .top-bar { display: flex; justify-content: flex-end; margin-bottom: 8px; gap: 8px; flex-wrap: wrap;}
     .icon-btn { 
       background: transparent; border: 1px solid var(--border); color: var(--text-muted); 
       cursor: pointer; width: 36px; height: 36px; border-radius: 50%; 
@@ -189,7 +204,17 @@
     
     #ai-explain-result { margin-top: 16px; padding: 16px; border: 2px solid rgba(168, 85, 247, 0.3); border-radius: 8px; background: rgba(168, 85, 247, 0.05); display: none; animation: fadeIn 0.4s; }
     .ai-exp-title { color: #a855f7; font-weight: bold; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; border-bottom: 1px dashed rgba(168, 85, 247, 0.3); padding-bottom: 8px; }
-    #ai-explain-text { white-space: pre-wrap; font-size: 0.95rem; line-height: 1.6; }
+    
+    /* マークダウン・数式表示用のスタイル */
+    .md-content { font-size: 0.95rem; line-height: 1.6; white-space: normal; }
+    .md-content p { margin-top: 0; margin-bottom: 12px; }
+    .md-content h1, .md-content h2, .md-content h3, .md-content h4 { margin-top: 20px; margin-bottom: 10px; color: var(--primary); font-weight: bold;}
+    .md-content h3 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 4px;}
+    .md-content h4 { font-size: 1rem; }
+    .md-content ul, .md-content ol { padding-left: 20px; margin-bottom: 12px; }
+    .md-content li { margin-bottom: 4px; }
+    .md-content blockquote { border-left: 4px solid var(--border); margin: 0 0 12px 0; padding-left: 12px; color: var(--text-muted); background: var(--input-bg); padding-top: 4px; padding-bottom: 4px; border-radius: 0 4px 4px 0;}
+    .md-content code { background: var(--border); padding: 2px 6px; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
 
     .controls { display: flex; gap: 12px; margin-top: 32px; }
     .controls .nav-btn.secondary { flex: 0.4; }
@@ -212,8 +237,11 @@
     .hi-mark { font-weight: bold; font-size: 1.1rem; padding: 2px 8px; border-radius: 4px; }
     .hi-correct { border-left: 4px solid var(--success-text); }
     .hi-wrong { border-left: 4px solid var(--danger-text); }
+    .hi-unanswered { border-left: 4px solid var(--text-muted); }
     .hi-correct .hi-mark { background: var(--success-bg); color: var(--success-text); }
     .hi-wrong .hi-mark { background: var(--danger-bg); color: var(--danger-text); }
+    .hi-unanswered .hi-mark { background: var(--border); color: var(--text); }
+    
     .ans-row { display: flex; gap: 8px; }
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
@@ -224,6 +252,29 @@
 
     .settings-area { margin-top: 32px; padding-top: 24px; border-top: 2px dashed var(--border); }
     .settings-area h3 { font-size: 1rem; color: var(--text-muted); margin-top: 0; margin-bottom: 12px; }
+    
+    .mock-history-list { display: flex; flex-direction: column; gap: 12px; margin-top: 16px; max-height: 60vh; overflow-y: auto; padding-right: 4px; }
+    .mock-history-item { 
+      display: flex; justify-content: space-between; align-items: center; 
+      padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); 
+      background: var(--card); transition: 0.2s;
+    }
+    .mock-history-item:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+    .mock-history-info { display: flex; flex-direction: column; gap: 4px; }
+    .mock-history-date { font-size: 0.85rem; color: var(--text-muted); }
+    .mock-history-score { font-size: 1.1rem; font-weight: bold; color: var(--primary); }
+    .mock-history-actions { display: flex; gap: 8px; align-items: center; }
+
+    .help-section { margin-bottom: 24px; padding: 16px; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); }
+    .help-section h3 { margin-top: 0; color: var(--primary); font-size: 1.1rem; border-bottom: 1px dashed var(--border); padding-bottom: 8px; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+    .help-section p { font-size: 0.95rem; line-height: 1.6; margin-bottom: 12px; color: var(--text); }
+    .help-section ol, .help-section ul { padding-left: 24px; font-size: 0.95rem; line-height: 1.6; color: var(--text); }
+    .help-section li { margin-bottom: 8px; }
+    .api-link { color: #2563eb; font-weight: bold; text-decoration: underline; word-break: break-all; }
+    .api-link:hover { color: #1d4ed8; }
+    [data-theme="dark"] .api-link { color: #60a5fa; }
+    [data-theme="dark"] .api-link:hover { color: #93c5fd; }
+    .warning-text { color: var(--danger-text); font-size: 0.85rem; font-weight: bold; background: var(--danger-bg); padding: 10px; border-radius: 6px; border: 1px solid rgba(239,68,68,0.3); }
   </style>
 </head>
 <body>
@@ -231,6 +282,7 @@
 <div class="container" id="app-container">
   
   <div class="top-bar">
+    <button class="nav-link-btn" onclick="openHelp()" title="使い方・API設定ガイド">❓ 使い方・設定</button>
     <a href="viewer.html" class="nav-link-btn" title="まとめノートを閲覧">📚 まとめ閲覧</a>
     <button class="icon-btn" id="theme-btn" onclick="toggleTheme()" title="テーマ切替">🌙</button>
   </div>
@@ -247,6 +299,62 @@
       </div>
       <input type="file" id="excel-file-input" accept=".xlsx, .xls" style="font-size: 0.9rem; width: 100%; padding: 8px;" onchange="handleManualUpload(event)">
     </div>
+  </div>
+
+  <!-- ★ 使い方ガイド画面 ★ -->
+  <div id="screen-help" class="screen">
+    <h2>📖 アプリの使い方ガイド</h2>
+    
+    <div class="help-section">
+      <h3>1. 基本的な使い方（過去問演習）</h3>
+      <p>このアプリは技術士 衛生工学部門の過去問を効率よく学習するためのツールです。</p>
+      <ul>
+        <li><b>フィルター機能:</b> 「年度」「大分類」「小分類」から解きたいジャンルを絞り込めます。</li>
+        <li><b>弱点克服フィルター:</b> 「未回答の問題」や「過去に間違えた問題」だけを優先して出題し、効率的な復習が可能です。</li>
+        <li><b>傾向重視:</b> 出題順序を「傾向重視」にすると、近年よく出題されるテーマが優先的に出題されます。</li>
+      </ul>
+    </div>
+
+    <div class="help-section">
+      <h3>2. AI機能について（予想問題・腕試し）</h3>
+      <p>このアプリの最大の特徴は、Googleの生成AI（Gemini）を活用して<b>「過去問と似た傾向の新しいオリジナル予想問題」</b>を作成できる点です。また、問題の解説をさらに詳しくAIに質問することもできます。</p>
+      <ul>
+        <li><b>AI予想問題 網羅特訓:</b> 選択したジャンルの過去問を分析し、新しい5択問題を自動生成します。</li>
+        <li><b>腕試しモード:</b> 本番試験と同じ配分で「35問中から25問を選んで解答する」模擬試験を受けられます。（約8割がAIによる新規作成問題、残りが過去問で構成されます）</li>
+      </ul>
+      <div class="warning-text" style="margin-top: 12px;">
+        ※AI機能（詳細解説・予想問題・腕試しモード）を利用するには、ご自身で「APIキー」を取得してアプリに設定する必要があります（無料）。詳しくは下記の手順をご覧ください。
+      </div>
+    </div>
+
+    <div class="help-section">
+      <h3>🔑 3. Gemini APIキーの取得と設定方法</h3>
+      <p>AI機能を使うための鍵（APIキー）をGoogleから取得します。取得は無料で、数分で完了します。</p>
+      <ol>
+        <li>Googleアカウントにログインした状態で、以下のサイトにアクセスします。<br>
+          <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" class="api-link">👉 Google AI Studio (API取得ページ)</a>
+        </li>
+        <li>画面内の <b>「Create API key」</b> または <b>「Get API key」</b> というボタンをクリックします。</li>
+        <li>新しいプロジェクトを作成するか選択し、APIキーを生成します。</li>
+        <li>生成された <b>長い文字列（APIキー）</b> をコピーします。</li>
+        <li>このアプリの「スタート画面」の一番下にある <b>「⚙️ AIモード用設定」</b> の入力欄に貼り付け、「保存」ボタンを押します。</li>
+      </ol>
+      <p style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">
+        ※ APIキーはあなたの端末内（ブラウザ）にのみ安全に保存され、外部のサーバーには送信されません。<br>
+        ※ Google Gemini APIの無料枠は非常に大きいため、個人での学習用途で課金されることは実質ありません。
+      </p>
+    </div>
+
+    <div class="help-section">
+      <h3>💾 4. 学習データの保存について</h3>
+      <p>あなたの学習履歴（総正解数、各問題の正誤、腕試しの履歴、APIキーなど）は、<b>お使いの端末のブラウザ内（ローカルストレージ）</b>に自動的に保存されます。</p>
+      <ul>
+        <li>ページを更新（リロード）したり、アプリのHTMLファイルを新しいものにアップデートしても、データは消えずに引き継がれます。</li>
+        <li><b>【注意】</b> ブラウザの「閲覧履歴やCookieをすべて消去する」操作を行うとデータが消えてしまいます。また、別の端末（PCからスマホなど）や別のブラウザアプリで開いた場合は、データは共有されません。</li>
+      </ul>
+    </div>
+
+    <button class="nav-btn" onclick="goToStart()" style="margin-top: 16px;">設定画面に戻る</button>
   </div>
 
   <div id="screen-start" class="screen">
@@ -327,8 +435,24 @@
 
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
+    <!-- ★ここに追加：中断データの再開エリア -->
+    <div id="resume-area" style="display: none; background: rgba(99, 102, 241, 0.1); border: 2px dashed var(--primary); padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
+      <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">⚠️ 中断中のデータがあります</div>
+      <div id="resume-info" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;"></div>
+      <div style="display: flex; gap: 8px;">
+        <button class="nav-btn" onclick="resumeSession()" style="flex: 1;">▶️ 続きから再開する</button>
+        <button class="icon-btn" style="border: none; color: var(--danger-text); background: var(--bg);" onclick="discardSession()" title="破棄する">🗑️</button>
+      </div>
+    </div>
+    
     <button id="start-btn" class="nav-btn" onclick="startQuiz()">過去問演習を開始する</button>
     <button id="start-ai-btn" class="nav-btn" onclick="startAIQuiz()">✨ AI予想問題 網羅特訓モード (5問ずつ生成)</button>
+    <button id="start-mock-btn" class="nav-btn" onclick="startMockExam()" style="background: linear-gradient(135deg, #f59e0b, #ea580c); margin-top: 16px;">
+      🏆 腕試しモード (本番形式: 35問中25問選択)
+    </button>
+    <button class="nav-btn secondary" onclick="openMockHistory()" style="margin-top: 12px;">
+      📊 過去の腕試し結果を見る
+    </button>
 
     <div class="settings-area">
       <h3>⚙️ AIモード用設定</h3>
@@ -356,6 +480,14 @@
   </div>
 
   <div id="screen-quiz" class="screen">
+    <div id="mock-status-bar" style="display: none; background: var(--trend-bg); color: var(--trend-text); padding: 12px; border-radius: 8px; font-weight: bold; text-align: center; margin-bottom: 16px;">
+      選択・解答済み: <span id="mock-answered-count">0</span> / 25 問
+    </div>
+
+    <div id="mock-nav" style="display: none; flex-wrap: wrap; gap: 6px; margin-bottom: 16px;">
+      <!-- JSで問1〜35のボタンを生成 -->
+    </div>
+
     <div class="header">
       <div>
         <span id="cat-label" class="cat-label-badge">分野</span>
@@ -368,8 +500,20 @@
 
     <div id="ai-loading">
       <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="spinner"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>
-      <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px;">AIが過去問DBを分析し、<br>予想問題を5問生成しています...</div>
-      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 8px;">少々お待ちください</div>
+      <div id="ai-loading-msg" style="font-weight: bold; color: #a855f7; margin-top: 16px; text-align: center; line-height: 1.5;">AIが過去問DBを分析し、<br>予想問題を生成しています...</div>
+      
+      <!-- プログレスバーUI -->
+      <div id="ai-progress-container" style="display: none; margin-top: 24px; text-align: left; background: var(--bg); padding: 16px; border-radius: 8px; border: 1px solid var(--border); box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+        <div style="display: flex; justify-content: space-between; font-size: 0.9rem; font-weight: bold; color: #a855f7; margin-bottom: 8px;">
+          <span id="ai-progress-text">準備中...</span>
+          <span id="ai-progress-count">0 / 28 問</span>
+        </div>
+        <div style="width: 100%; background: var(--border); height: 10px; border-radius: 5px; overflow: hidden; margin-bottom: 8px;">
+          <div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); transition: width 0.4s ease;"></div>
+        </div>
+      </div>
+
+      <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 12px; text-align: center;">※少々お待ちください</div>
     </div>
 
     <div class="question-box" id="q-text"></div>
@@ -378,7 +522,7 @@
 
     <div class="explanation-box" id="exp-box">
       <div class="result-status" id="res-status"></div>
-      <div id="exp-text"></div>
+      <div id="exp-text" class="md-content"></div>
       
       <button id="ai-explain-btn" class="nav-btn" style="margin-top: 20px; width: 100%; background: linear-gradient(135deg, #a855f7, #d946ef); font-size: 0.95rem; display: none; box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);" onclick="askAIExplain()">✨ AIにさらに詳しく解説してもらう</button>
       
@@ -392,7 +536,7 @@
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
           AI詳細解説
         </div>
-        <div id="ai-explain-text"></div>
+        <div id="ai-explain-text" class="md-content"></div>
       </div>
     </div>
 
@@ -413,14 +557,25 @@
     
     <div class="history-filter">
       <label><input type="radio" name="res-filter" value="all" checked onchange="renderHistoryUI()"><span>すべて表示</span></label>
-      <label><input type="radio" name="res-filter" value="wrong" onchange="renderHistoryUI()"><span>不正解のみ</span></label>
+      <label><input type="radio" name="res-filter" value="wrong" onchange="renderHistoryUI()"><span>不正解・未回答</span></label>
     </div>
 
     <div id="history-list" class="history-list">
       <!-- 履歴がここに入る -->
     </div>
     
-    <button class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
+    <button id="result-back-btn" class="nav-btn" onclick="goToStart()" style="margin-top: 24px;">設定・成績画面に戻る</button>
+  </div>
+
+  <div id="screen-mock-history" class="screen">
+    <h2>腕試しモード 履歴</h2>
+    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 16px; text-align: center;">
+      ※直近10件までの履歴が保存されます。
+    </div>
+    <div id="mock-history-container" class="mock-history-list">
+      <!-- 履歴リストがここに入る -->
+    </div>
+    <button class="nav-btn secondary" onclick="goToStart()" style="margin-top: 24px;">設定画面に戻る</button>
   </div>
 
 </div>
@@ -443,10 +598,17 @@
   let sessionAnswers = {}; 
   let isAiMode = false; 
 
+  // --- 腕試しモード用変数 ---
+  let isMockMode = false;
+  let mockAnsweredCount = 0;
+  const MAX_MOCK_SELECT = 25;
+
   let userMemory = {
     theme: 'light',
     stats: { total: 0, correct: 0 },
-    history: {} 
+    history: {},
+    mockExams: [],
+    savedSession: null // ★追加：中断データを保存する場所
   };
   
   window.onload = async () => {
@@ -468,6 +630,11 @@
     loadApiKey();
     switchScreen('screen-start');
   }
+
+  window.openHelp = function() {
+    switchScreen('screen-help');
+    window.scrollTo(0, 0);
+  };
 
   window.saveApiKey = function() {
     const key = document.getElementById('api-key-input').value.trim();
@@ -508,6 +675,8 @@
       const savedData = localStorage.getItem('app_memory');
       if (savedData) {
         userMemory = JSON.parse(savedData);
+        if (!userMemory.mockExams) userMemory.mockExams = [];      
+        if (!userMemory.savedSession) userMemory.savedSession = null; // 初期化
       }
     } catch (e) {
       console.error("メモリの読み込みエラー", e);
@@ -539,6 +708,19 @@
     applyTheme();
     saveUserData(); 
   };
+
+  // --- MarkdownとLaTeXのレンダリング用関数 ---
+  marked.setOptions({ breaks: true, gfm: true }); // 改行を<br>に変換
+  
+  async function renderContent(text, elementId) {
+      const el = document.getElementById(elementId);
+      if (!el) return;
+      const html = DOMPurify.sanitize(marked.parse(text));
+      el.innerHTML = html;
+      if (window.MathJax && window.MathJax.typesetPromise) {
+          try { await MathJax.typesetPromise([el]); } catch (err) { console.error("MathJax error:", err); }
+      }
+  }
 
   function getChartColors() {
     const isDarkMode = userMemory.theme === 'dark';
@@ -658,7 +840,6 @@
   }
 
   async function loadExcelData() {
-    // キャッシュを回避するためにクエリパラメータを付与してリクエスト
     const timestamp = new Date().getTime();
     const response = await fetch(`${EXCEL_FILE_NAME}?t=${timestamp}`);
     if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
@@ -907,6 +1088,24 @@
       startBtn.disabled = false;
       startBtn.textContent = '過去問演習を開始する';
     }
+
+    // ★追加：中断データがある場合のUI更新
+    const resumeArea = document.getElementById('resume-area');
+    if (userMemory.savedSession) {
+      resumeArea.style.display = 'block';
+      let modeText = "過去問演習";
+      if (userMemory.savedSession.isMockMode) modeText = "腕試しモード";
+      else if (userMemory.savedSession.isAiMode) modeText = "AI予想問題 網羅特訓";
+      
+      const qCount = userMemory.savedSession.filteredQuestions.length;
+      const ansCount = Object.keys(userMemory.savedSession.sessionAnswers).length;
+      
+      document.getElementById('resume-info').innerHTML = 
+        `${modeText} (${ansCount} / ${userMemory.savedSession.isMockMode ? '25' : qCount} 問 解答済み)<br>
+         <span style="font-size: 0.8rem;">保存日時: ${userMemory.savedSession.date}</span>`;
+    } else {
+      resumeArea.style.display = 'none';
+    }
   };
 
   function getWeightedRandomQuestions(pool, count) {
@@ -949,8 +1148,255 @@
     document.getElementById(screenId).classList.add('active');
   }
 
+  window.goToStart = function() {
+    window.isViewingPastMock = false;
+    updateMemoryUI();
+    updateFilterUI();
+    switchScreen('screen-start');
+  };
+
+  function getRandomQuestions(genre, count) {
+    const pool = allQuestions.filter(q => q.genre === genre);
+    return shuffleArray([...pool]).slice(0, count);
+  }
+
+  // --- 腕試しモード（プログレスバー対応） ---
+  window.startMockExam = async function() {
+    const apiKey = localStorage.getItem('my_gemini_api_key');
+    if (!apiKey) {
+      alert("APIキーを保存してください。"); return;
+    }
+
+    window.isViewingPastMock = false;
+    isMockMode = true;
+    isAiMode = true; 
+    sessionAnswers = {};
+    filteredQuestions = [];
+    mockAnsweredCount = 0;
+    curIdx = 0;
+    
+    switchScreen('screen-quiz');
+    document.getElementById('q-text').style.display = 'none';
+    document.getElementById('opt-box').style.display = 'none';
+    document.getElementById('q-image-container').style.display = 'none';
+    document.getElementById('mock-status-bar').style.display = 'none';
+    document.getElementById('mock-nav').style.display = 'none';
+    
+    // ローディングとプログレスバーの表示
+    document.getElementById('ai-loading').style.display = 'block';
+    document.getElementById('ai-progress-container').style.display = 'block';
+    document.getElementById('ai-loading-msg').innerHTML = "本番形式の35問セットを構築中...<br>（AI生成28問 ＋ 過去問7問）";
+
+    let aiGeneratedCount = 0;
+    const totalAiNeed = 28;
+
+    const updateProgress = (stepMsg, addedCount = 0) => {
+      aiGeneratedCount += addedCount;
+      const percent = Math.round((aiGeneratedCount / totalAiNeed) * 100);
+      document.getElementById('ai-progress-text').textContent = stepMsg;
+      document.getElementById('ai-progress-text').style.color = '#a855f7'; // reset color
+      document.getElementById('ai-progress-count').textContent = `${aiGeneratedCount} / ${totalAiNeed} 問`;
+      document.getElementById('ai-progress-bar').style.width = `${percent}%`;
+    };
+
+    const retryCallback = (retriesLeft, isLite) => {
+      const modelName = isLite ? "軽量(Lite)モデル" : "標準モデル";
+      document.getElementById('ai-progress-text').textContent = `API混雑中... 再試行(${modelName})`;
+      document.getElementById('ai-progress-text').style.color = '#eab308'; // 警告色
+    };
+
+    try {
+      updateProgress("「建築環境・設備」を作成中 (1/4)...", 0);
+      let kenchikuPrev = "";
+      
+      const kenchikuAI_1 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_1.length);
+      kenchikuPrev += kenchikuAI_1.map(q => "・" + q.question).join("\n") + "\n";
+      await new Promise(r => setTimeout(r, 1500)); 
+      
+      updateProgress("「建築環境・設備」を作成中 (2/4)...", 0);
+      const kenchikuAI_2 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_2.length);
+      kenchikuPrev += kenchikuAI_2.map(q => "・" + q.question).join("\n") + "\n";
+      await new Promise(r => setTimeout(r, 1500));
+      
+      updateProgress("「建築環境・設備」を作成中 (3/4)...", 0);
+      const kenchikuAI_3 = await fetchMockAIBatch("建築環境・設備・衛生管理", 4, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("インターバル待機中...", kenchikuAI_3.length);
+      kenchikuPrev += kenchikuAI_3.map(q => "・" + q.question).join("\n") + "\n";
+      await new Promise(r => setTimeout(r, 1500));
+      
+      updateProgress("「建築環境・設備」を作成中 (4/4)...", 0);
+      const kenchikuAI_4 = await fetchMockAIBatch("建築環境・設備・衛生管理", 2, apiKey, false, kenchikuPrev, retryCallback);
+      updateProgress("ジャンル切替の待機中...", kenchikuAI_4.length);
+      
+      const kenchikuPast = getRandomQuestions("建築環境・設備・衛生管理", 3);
+      const kenchikuAll = shuffleArray([...kenchikuAI_1, ...kenchikuAI_2, ...kenchikuAI_3, ...kenchikuAI_4, ...kenchikuPast]);
+      
+      await new Promise(r => setTimeout(r, 2000)); 
+      
+      // 水質管理
+      updateProgress("「水質管理」を作成中 (1/2)...", 0);
+      let suishitsuPrev = "";
+      const suishitsuAI_1 = await fetchMockAIBatch("水質管理", 4, apiKey, false, suishitsuPrev, retryCallback);
+      updateProgress("インターバル待機中...", suishitsuAI_1.length);
+      suishitsuPrev += suishitsuAI_1.map(q => "・" + q.question).join("\n") + "\n";
+      await new Promise(r => setTimeout(r, 1500));
+      
+      updateProgress("「水質管理」を作成中 (2/2)...", 0);
+      const suishitsuAI_2 = await fetchMockAIBatch("水質管理", 3, apiKey, false, suishitsuPrev, retryCallback);
+      updateProgress("ジャンル切替の待機中...", suishitsuAI_2.length);
+      
+      const suishitsuPast = getRandomQuestions("水質管理", 2);
+      const suishitsuAll = shuffleArray([...suishitsuAI_1, ...suishitsuAI_2, ...suishitsuPast]);
+
+      await new Promise(r => setTimeout(r, 2000)); 
+
+      // 廃棄物管理
+      updateProgress("「廃棄物管理」を作成中 (1/2)...", 0);
+      let haikibutsuPrev = "";
+      const haikibutsuAI_1 = await fetchMockAIBatch("廃棄物管理", 4, apiKey, false, haikibutsuPrev, retryCallback);
+      updateProgress("インターバル待機中...", haikibutsuAI_1.length);
+      haikibutsuPrev += haikibutsuAI_1.map(q => "・" + q.question).join("\n") + "\n";
+      await new Promise(r => setTimeout(r, 1500));
+      
+      updateProgress("「廃棄物管理」を作成中 (2/2)...", 0);
+      const haikibutsuAI_2 = await fetchMockAIBatch("廃棄物管理", 3, apiKey, false, haikibutsuPrev, retryCallback);
+      updateProgress("全問題の準備完了！", haikibutsuAI_2.length);
+      
+      const haikibutsuPast = getRandomQuestions("廃棄物管理", 2);
+      const haikibutsuAll = shuffleArray([...haikibutsuAI_1, ...haikibutsuAI_2, ...haikibutsuPast]);
+
+      // 問題を結合 (本番通り建築→水質→廃棄物の順)
+      filteredQuestions = [...kenchikuAll, ...suishitsuAll, ...haikibutsuAll];
+
+      document.getElementById('ai-loading').style.display = 'none';
+      document.getElementById('q-text').style.display = 'block';
+      document.getElementById('opt-box').style.display = 'flex';
+      
+      initMockNav(); 
+      renderQuestion();
+
+      // ★追加：開始時に既存のセーブデータを破棄
+      clearSavedSession();
+
+    } catch (error) {
+      console.error(error);
+      alert("問題生成に失敗しました: " + error.message);
+      goToStart();
+    }
+  };
+
+  // AIに指定ジャンル・指定問題数を生成させる関数（リトライ対応）
+  async function fetchMockAIBatch(genre, count, apiKey, useLiteModel = false, previousQuestionsText = "", onRetry = null) {
+    const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+    
+    let avoidPrompt = "";
+    if (previousQuestionsText) {
+        avoidPrompt = `\n\n【重要：重複の回避】\nすでに以下の問題が作成されています。これらと内容や問うている知識が被らないよう、全く異なるテーマや切り口で作成してください。\n${previousQuestionsText}`;
+    }
+
+    const prompt = `あなたは技術士（衛生工学部門）の試験委員です。「${genre}」分野について、本番試験と同等の難易度と形式で、五肢択一問題を【${count}問】作成してください。
+図表を使わずテキストのみで解答できる問題にし、JSONフォーマット（{"questions": [{"question": "...", "options": ["...","...","...","...","..."], "answer": 0, "explanation": "..."}]}）で出力してください。
+問題文や選択肢は、過去問と全く同じにならないよう工夫してください。
+※重要：解説にはMarkdown記法（見出し、太字など）を使い、数式が含まれる場合はLaTeX記法（インラインは $...$ 、ブロックは $$...$$）を使用してください。${avoidPrompt}`;
+
+    const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
+    
+    let retries = 2;
+    while (retries >= 0) {
+      try {
+        const res = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        
+        if (!res.ok) {
+           if (res.status === 429 || res.status === 503) {
+               if (!useLiteModel) {
+                   console.warn(`API Busy (${res.status}). Switching to Lite model for this batch.`);
+                   if (onRetry) onRetry(retries, true);
+                   return fetchMockAIBatch(genre, count, apiKey, true, previousQuestionsText, onRetry); 
+               }
+               throw new Error(`API Busy (${res.status}) - Lite model also failed.`);
+           }
+           throw new Error(data.error?.message || "Unknown API Error");
+        }
+        
+        const parsed = JSON.parse(data.candidates[0].content.parts[0].text);
+        if (!parsed.questions || parsed.questions.length === 0) throw new Error("Empty AI Response");
+
+        return parsed.questions.slice(0, count).map((q, idx) => ({
+          id: `MockAI-${genre}-${Date.now()}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+          year: "AI予想 (腕試し)",
+          qNum: "-",
+          genre: genre,
+          subgenre: "総合",
+          question: q.question,
+          options: q.options,
+          answer: q.answer,
+          explanation: `【AI解説】${useLiteModel ? '(Lite)' : ''}\n${q.explanation}`,
+          imageUrl: ""
+        }));
+      } catch (e) {
+        console.warn(`Fetch failed for ${genre} (${count} questions), retries left: ${retries}. Error: ${e.message}`);
+        retries--;
+        if (retries < 0) throw e;
+        if (onRetry) onRetry(retries, useLiteModel);
+        await new Promise(r => setTimeout(r, 3000));
+      }
+    }
+  }
+
+  function initMockNav() {
+    const nav = document.getElementById('mock-nav');
+    nav.innerHTML = '';
+    nav.style.display = 'flex';
+    document.getElementById('mock-status-bar').style.display = 'block';
+    updateMockStatus();
+
+    filteredQuestions.forEach((q, idx) => {
+      const btn = document.createElement('button');
+      btn.textContent = idx + 1;
+      btn.style.cssText = "width: 32px; height: 32px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); cursor: pointer; font-size: 0.85rem; display: flex; align-items: center; justify-content: center; font-weight: bold; color: var(--text);";
+      btn.onclick = () => { curIdx = idx; renderQuestion(); };
+      btn.id = `mock-nav-btn-${idx}`;
+      nav.appendChild(btn);
+    });
+  }
+
+  function updateMockStatus() {
+    if (!isMockMode) return;
+    
+    document.getElementById('mock-answered-count').textContent = mockAnsweredCount;
+    filteredQuestions.forEach((q, idx) => {
+      const btn = document.getElementById(`mock-nav-btn-${idx}`);
+      if (btn) {
+        if (sessionAnswers.hasOwnProperty(q.id)) {
+          btn.style.background = 'var(--primary)';
+          btn.style.color = '#fff';
+          btn.style.borderColor = 'var(--primary)';
+        } else {
+          btn.style.background = (idx === curIdx) ? 'var(--info-bg)' : 'var(--bg)';
+          btn.style.color = (idx === curIdx) ? 'var(--primary)' : 'var(--text)';
+          btn.style.borderColor = (idx === curIdx) ? 'var(--primary)' : 'var(--border)';
+        }
+      }
+    });
+
+    const nextBtn = document.getElementById('next-btn');
+    if (mockAnsweredCount >= MAX_MOCK_SELECT) {
+      nextBtn.textContent = '25問選択完了！ 採点結果を見る';
+      nextBtn.disabled = false;
+      nextBtn.onclick = showResults;
+      nextBtn.style.background = 'var(--danger-btn)';
+    }
+  }
+
+
   window.startQuiz = function() {
     if (currentTargetQuestions.length === 0) return;
+    window.isViewingPastMock = false;
+    isMockMode = false;
     isAiMode = false;
     let questionsPool = [...currentTargetQuestions];
     const orderType = document.getElementById('order-filter').value;
@@ -969,6 +1415,8 @@
     sessionAnswers = {};
     curIdx = 0;
     
+    document.getElementById('mock-status-bar').style.display = 'none';
+    document.getElementById('mock-nav').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'none';
     document.getElementById('q-text').style.display = 'block';
     document.getElementById('opt-box').style.display = 'flex';
@@ -976,6 +1424,9 @@
     
     switchScreen('screen-quiz');
     renderQuestion();
+
+    // ★追加：開始時に既存のセーブデータを破棄
+    clearSavedSession();
   };
 
   window.startAIQuiz = async function() {
@@ -986,13 +1437,21 @@
       return;
     }
 
+    window.isViewingPastMock = false;
+    isMockMode = false;
     isAiMode = true;
     sessionAnswers = {};
     filteredQuestions = [];
     curIdx = 0;
     
+    document.getElementById('mock-status-bar').style.display = 'none';
+    document.getElementById('mock-nav').style.display = 'none';
+
     switchScreen('screen-quiz');
     await generateAIQuestionsBatch();
+    
+    // ★追加：開始時に既存のセーブデータを破棄
+    clearSavedSession();
   }
 
   async function generateAIQuestionsBatch(useLiteModel = false) {
@@ -1001,6 +1460,7 @@
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
+    document.getElementById('ai-progress-container').style.display = 'none'; // 5問生成時はプログレスバー非表示
     
     const aiLoadingMsg = document.getElementById('ai-loading-msg');
     if (useLiteModel) {
@@ -1048,6 +1508,7 @@ ${refText}
 【指示】
 ・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
 ・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
+・解説文はMarkdown記法（見出し、太字など）を用いて構造化し、数式を使用する場合はLaTeX記法（インラインは $...$、ブロックは $$...$$）で記述してください。
 
 以下のJSONフォーマットで出力してください。
 {
@@ -1125,29 +1586,32 @@ ${refText}
   function renderQuestion() {
     const q = filteredQuestions[curIdx];
     
-    document.getElementById('prog-label').textContent = `問 ${curIdx + 1} / ${filteredQuestions.length}`;
+    if (isMockMode) updateMockStatus();
+
+    document.getElementById('prog-label').textContent = isMockMode ? `問 ${curIdx + 1}` : `問 ${curIdx + 1} / ${filteredQuestions.length}`;
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
     document.getElementById('q-text').textContent = q.question;
     
     const sourceEl = document.getElementById('q-source');
-    if (isAiMode) {
+    if (q.year === "AI予想 (腕試し)" || (isAiMode && !isMockMode)) {
       sourceEl.innerHTML = '✨ AIオリジナル予想問題';
       sourceEl.style.color = '#a855f7';
       sourceEl.style.borderColor = 'rgba(168, 85, 247, 0.3)';
       sourceEl.style.background = 'rgba(168, 85, 247, 0.05)';
+      sourceEl.style.display = 'inline-flex';
     } else {
       sourceEl.innerHTML = `📖 出典: ${q.year} ${q.qNum}`;
       sourceEl.style.color = 'var(--text-muted)';
       sourceEl.style.borderColor = 'var(--border)';
       sourceEl.style.background = 'var(--bg)';
+      sourceEl.style.display = 'inline-flex';
     }
 
     const trendLabel = document.getElementById('trend-label');
-    if (!isAiMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
+    if (!isAiMode && !isMockMode && q.subgenre && subgenreTrendScores[q.subgenre]) {
         const lv = subgenreTrendScores[q.subgenre].level;
         const stars = '★'.repeat(lv) + '☆'.repeat(5 - lv);
         trendLabel.textContent = `頻出度 ${stars}`;
-        
         trendLabel.className = 'trend-badge'; 
         trendLabel.classList.add(`trend-lv${lv}`);
         trendLabel.style.display = "inline-block";
@@ -1179,7 +1643,11 @@ ${refText}
           if (idx === q.answer) btn.classList.add("correct");
           if (sessionAnswers[q.id] === idx && idx !== q.answer) btn.classList.add("wrong");
         } else {
-          btn.onclick = () => selectOption(idx);
+          if (isMockMode && mockAnsweredCount >= MAX_MOCK_SELECT) {
+             btn.disabled = true;
+          } else {
+             btn.onclick = () => selectOption(idx);
+          }
         }
         
         optBox.appendChild(btn);
@@ -1195,15 +1663,28 @@ ${refText}
       const isCorrect = sessionAnswers[q.id] === q.answer;
       const resStatus = document.getElementById('res-status');
       resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
-      document.getElementById('exp-text').textContent = q.explanation;
+      
+      // MarkdownとLaTeXをレンダリングして表示
+      renderContent(q.explanation, 'exp-text');
       document.getElementById('exp-box').classList.add('show');
       
-      if (!isAiMode) {
+      if (!isAiMode || isMockMode) {
         document.getElementById('ai-explain-btn').style.display = 'block';
       }
       
       nextBtn.disabled = false;
-      if (isAiMode && curIdx === filteredQuestions.length - 1) {
+      nextBtn.style.background = ''; // reset color
+
+      if (isMockMode) {
+        if (mockAnsweredCount >= MAX_MOCK_SELECT) {
+          nextBtn.textContent = '25問選択完了！ 採点結果を見る';
+          nextBtn.onclick = showResults;
+          nextBtn.style.background = 'var(--danger-btn)';
+        } else {
+          nextBtn.textContent = '次の問題へ';
+          nextBtn.onclick = goNext;
+        }
+      } else if (isAiMode && curIdx === filteredQuestions.length - 1) {
           nextBtn.textContent = '次のAI予想問題へ';
           nextBtn.onclick = () => generateAIQuestionsBatch();
       } else if (curIdx === filteredQuestions.length - 1) {
@@ -1214,9 +1695,17 @@ ${refText}
           nextBtn.onclick = goNext;
       }
     } else {
-      nextBtn.disabled = true;
-      nextBtn.textContent = '回答を選択してください';
-      nextBtn.onclick = null;
+      if (isMockMode && mockAnsweredCount >= MAX_MOCK_SELECT) {
+         nextBtn.disabled = false;
+         nextBtn.textContent = '25問選択完了！ 採点結果を見る';
+         nextBtn.onclick = showResults;
+         nextBtn.style.background = 'var(--danger-btn)';
+      } else {
+         nextBtn.disabled = true;
+         nextBtn.textContent = '回答を選択してください';
+         nextBtn.onclick = null;
+         nextBtn.style.background = '';
+      }
     }
   }
 
@@ -1224,9 +1713,17 @@ ${refText}
     const q = filteredQuestions[curIdx];
     if(sessionAnswers.hasOwnProperty(q.id)) return;
     
+    if (isMockMode && !sessionAnswers.hasOwnProperty(q.id)) {
+      if (mockAnsweredCount >= MAX_MOCK_SELECT) {
+        alert("すでに25問選択済みです。他の問題の解答を変更することはできません。");
+        return;
+      }
+      mockAnsweredCount++;
+    }
+
     sessionAnswers[q.id] = selectedIdx; 
     
-    if (!isAiMode) {
+    if (!isAiMode && !isMockMode) { 
       if (!userMemory.history[q.id]) {
         userMemory.history[q.id] = { c: 0, w: 0 };
       }
@@ -1276,6 +1773,10 @@ ${refText}
     const prompt = `あなたは技術士（衛生工学部門）の専門講師です。
 以下の過去問について、なぜその選択肢が正解なのか、また他の選択肢のどこが間違っているのかを詳細に解説してください。
 
+※出力形式についての指示：
+- 見出し（### など）、太字（**文字**）、箇条書き等のMarkdown記法を用いて、読みやすく構造化してください。
+- 数式を使用する場合は、必ずLaTeX記法を用い、インライン数式は $...$ 、ブロック数式は $$...$$ で囲んでください。
+
 【問題文】
 ${q.question}
 
@@ -1310,8 +1811,11 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         let aiText = result.candidates[0].content.parts[0].text;
         
         loading.style.display = "none";
-        resultText.textContent = useLiteModel ? `[Liteモデルによる解説]\n${aiText}` : aiText;
         resultBox.style.display = "block";
+        
+        // MarkdownとLaTeXをレンダリングして表示
+        const textToRender = useLiteModel ? `**[Liteモデルによる解説]**\n\n${aiText}` : aiText;
+        renderContent(textToRender, 'ai-explain-text');
       }
     } catch(e) {
       console.error("AI解説生成エラー", e);
@@ -1323,26 +1827,102 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
 
   window.goNext = function() {
     if (curIdx < filteredQuestions.length - 1) {
-        curIdx++; renderQuestion(); window.scrollTo(0, 0);
+        curIdx++; 
+        renderQuestion(); 
+        window.scrollTo(0, 0);
+        // ★追加：1問進むごとに進捗を自動保存
+        saveCurrentSession();
     }
   }
 
+  // ★追加：現在のセッション状態を保存する関数
+  function saveCurrentSession() {
+    if (window.isViewingPastMock) return; // 過去の履歴閲覧中は保存しない
+
+    const now = new Date();
+    const yyyy = now.getFullYear();
+    const MM = String(now.getMonth() + 1).padStart(2, '0');
+    const dd = String(now.getDate()).padStart(2, '0');
+    const hh = String(now.getHours()).padStart(2, '0');
+    const mm = String(now.getMinutes()).padStart(2, '0');
+
+    userMemory.savedSession = {
+      date: `${yyyy}/${MM}/${dd} ${hh}:${mm}`,
+      isMockMode: isMockMode,
+      isAiMode: isAiMode,
+      filteredQuestions: filteredQuestions,
+      sessionAnswers: sessionAnswers,
+      curIdx: curIdx,
+      mockAnsweredCount: mockAnsweredCount
+    };
+    saveUserData();
+  }
+
+  // ★追加：セーブデータを破棄する関数
+  function clearSavedSession() {
+    userMemory.savedSession = null;
+    saveUserData();
+  }
+
+  // ★追加：中断データを破棄するボタンの処理
+  window.discardSession = function() {
+    if (confirm("中断中のデータを破棄してもよろしいですか？\n（この操作は元に戻せません）")) {
+      clearSavedSession();
+      updateFilterUI();
+    }
+  };
+
+  // ★追加：中断データから再開する処理
+  window.resumeSession = function() {
+    if (!userMemory.savedSession) return;
+
+    window.isViewingPastMock = false;
+    isMockMode = userMemory.savedSession.isMockMode;
+    isAiMode = userMemory.savedSession.isAiMode;
+    filteredQuestions = userMemory.savedSession.filteredQuestions;
+    sessionAnswers = userMemory.savedSession.sessionAnswers;
+    curIdx = userMemory.savedSession.curIdx;
+    mockAnsweredCount = userMemory.savedSession.mockAnsweredCount || 0;
+
+    document.getElementById('ai-loading').style.display = 'none';
+    document.getElementById('q-text').style.display = 'block';
+    document.getElementById('opt-box').style.display = 'flex';
+    document.getElementById('q-image-container').style.display = 'none';
+    
+    if (isMockMode) {
+      document.getElementById('q-source').style.display = 'none';
+      initMockNav();
+    } else {
+      document.getElementById('mock-status-bar').style.display = 'none';
+      document.getElementById('mock-nav').style.display = 'none';
+      document.getElementById('q-source').style.display = 'inline-flex';
+    }
+    
+    switchScreen('screen-quiz');
+    renderQuestion();
+  };
+
   window.quitQuiz = function() {
-    if (isAiMode) {
-        if(confirm("AI網羅特訓を終了して結果を見ますか？")) {
+    if (isMockMode) {
+      if(confirm("腕試しモードを終了して、現在解答した問題だけの結果を見ますか？\n\n※「キャンセル」を押すと、結果を見ずにスタート画面に戻ります。再開用のデータは自動で保存されています。")) {
+         window.showResults();
+      } else {
+         saveCurrentSession();
+         window.goToStart();
+      }
+    } else if (isAiMode) {
+        if(confirm("AI網羅特訓を終了して結果を見ますか？\n\n※「キャンセル」を押すと、結果を見ずにスタート画面に戻ります。再開用のデータは自動で保存されています。")) {
             window.showResults();
+        } else {
+            saveCurrentSession();
+            window.goToStart();
         }
     } else {
-        if(confirm("演習を中断して設定画面に戻りますか？\n（現在までの進捗は保存されません）")) {
+        if(confirm("演習を中断して設定画面に戻りますか？\n（現在の進捗は自動的に保存され、後で再開できます）")) {
+            saveCurrentSession();
             window.goToStart();
         }
     }
-  }
-
-  window.goToStart = function() {
-    updateMemoryUI(); 
-    switchScreen('screen-start');
-    window.scrollTo(0, 0);
   }
 
   window.showResults = function() {
@@ -1355,20 +1935,126 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     });
 
     const count = questionsToEval.length;
-    const rate = count > 0 ? Math.round((correctCount / count) * 100) : 0;
+    
+    const denom = isMockMode ? MAX_MOCK_SELECT : count; 
+    const rate = denom > 0 ? Math.round((correctCount / denom) * 100) : 0;
+    
     document.getElementById("score-text").textContent = `${rate}%`;
-    document.getElementById("score-detail").textContent = `${correctCount} / ${count} 問 正解`;
+    document.getElementById("score-detail").textContent = `${correctCount} / ${denom} 問 正解`;
+
+    let mockEvalText = "";
+    if (isMockMode) {
+      if (rate >= 60) {
+        mockEvalText = "<div style='color: var(--success-text); margin-top:12px;'>🎉 合格ライン（60%以上）に達しています！</div>";
+      } else {
+        mockEvalText = "<div style='color: var(--trend-text); margin-top:12px;'>💪 合格ラインまであと少し！復習しましょう。</div>";
+      }
+      document.getElementById("score-detail").innerHTML = `${correctCount} / ${denom} 問 正解` + mockEvalText;
+
+      if (!window.isViewingPastMock) {
+        const now = new Date();
+        const yyyy = now.getFullYear();
+        const MM = String(now.getMonth() + 1).padStart(2, '0');
+        const dd = String(now.getDate()).padStart(2, '0');
+        const hh = String(now.getHours()).padStart(2, '0');
+        const mm = String(now.getMinutes()).padStart(2, '0');
+        
+        const mockRecord = {
+          id: "mock_" + now.getTime(),
+          date: `${yyyy}/${MM}/${dd} ${hh}:${mm}`,
+          score: { correct: correctCount, total: denom, rate: rate },
+          questions: filteredQuestions,
+          answers: sessionAnswers
+        };
+        
+        userMemory.mockExams.push(mockRecord);
+        if (userMemory.mockExams.length > 10) {
+          userMemory.mockExams.shift();
+        }
+        saveUserData();
+      }
+    }
+
+    // ★追加：最後までやり切った、または結果を見た場合はセーブデータを消去
+    if (!window.isViewingPastMock) {
+        clearSavedSession();
+    }
 
     document.querySelector('input[name="res-filter"][value="all"]').checked = true;
-    window.renderHistoryUI(questionsToEval);
+    window.renderHistoryUI(filteredQuestions); 
+
+    const backBtn = document.getElementById('result-back-btn');
+    if (window.isViewingPastMock) {
+      backBtn.textContent = '履歴一覧に戻る';
+      backBtn.onclick = window.openMockHistory;
+    } else {
+      backBtn.textContent = '設定・成績画面に戻る';
+      backBtn.onclick = window.goToStart;
+    }
 
     switchScreen('screen-result');
     window.scrollTo(0, 0);
   }
 
+  window.openMockHistory = function() {
+    const container = document.getElementById('mock-history-container');
+    container.innerHTML = '';
+
+    if (!userMemory.mockExams || userMemory.mockExams.length === 0) {
+      container.innerHTML = '<div class="empty-msg" style="padding: 40px 20px;">保存された模擬試験の履歴はありません。</div>';
+    } else {
+      const reversedExams = [...userMemory.mockExams].reverse();
+      reversedExams.forEach(exam => {
+        const item = document.createElement('div');
+        item.className = 'mock-history-item';
+        
+        const isPass = exam.score.rate >= 60;
+        const scoreColor = isPass ? 'var(--success-text)' : 'var(--trend-text)';
+
+        item.innerHTML = `
+          <div class="mock-history-info">
+            <span class="mock-history-date">📅 ${exam.date}</span>
+            <span class="mock-history-score" style="color: ${scoreColor}">${exam.score.rate}% (${exam.score.correct}/${exam.score.total}問)</span>
+          </div>
+          <div class="mock-history-actions">
+            <button class="nav-btn" style="padding: 8px 16px; font-size: 0.85rem; width: auto;" onclick="viewPastMock('${exam.id}')">詳細を見る</button>
+            <button class="icon-btn" style="border: none; color: var(--danger-text);" onclick="deleteMockRecord('${exam.id}')" title="削除">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"></path><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+            </button>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    switchScreen('screen-mock-history');
+  };
+
+  window.viewPastMock = function(mockId) {
+    const exam = userMemory.mockExams.find(e => e.id === mockId);
+    if (!exam) return;
+
+    window.isViewingPastMock = true;
+    isMockMode = true;
+    isAiMode = true; 
+    filteredQuestions = exam.questions;
+    sessionAnswers = exam.answers;
+    mockAnsweredCount = Object.keys(sessionAnswers).length;
+
+    window.showResults();
+  };
+
+  window.deleteMockRecord = function(mockId) {
+    if (confirm("この履歴を削除してもよろしいですか？")) {
+      userMemory.mockExams = userMemory.mockExams.filter(e => e.id !== mockId);
+      saveUserData();
+      window.openMockHistory(); 
+    }
+  };
+
   window.renderHistoryUI = function(questions = null) {
     if (!questions) {
-        questions = filteredQuestions.filter(q => sessionAnswers.hasOwnProperty(q.id));
+        questions = filteredQuestions;
     }
     
     const historyList = document.getElementById("history-list");
@@ -1378,27 +2064,45 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     let displayedCount = 0;
 
     questions.forEach((q, index) => {
-      const userAnsIdx = sessionAnswers[q.id];
-      const isCorrect = userAnsIdx === q.answer;
+      const isAnswered = sessionAnswers.hasOwnProperty(q.id);
+      const userAnsIdx = isAnswered ? sessionAnswers[q.id] : -1;
+      const isCorrect = isAnswered && userAnsIdx === q.answer;
       
       if (filterMode === 'wrong' && isCorrect) return;
+      
       displayedCount++;
 
       const item = document.createElement("div");
-      item.className = `history-item ${isCorrect ? 'hi-correct' : 'hi-wrong'}`;
-      const userAnsText = userAnsIdx !== undefined ? q.options[userAnsIdx] : "未回答";
+      
+      let statusClass = 'hi-unanswered';
+      let markText = '未回答';
+      let userAnsColor = 'var(--text-muted)';
+      
+      if (isAnswered) {
+          statusClass = isCorrect ? 'hi-correct' : 'hi-wrong';
+          markText = isCorrect ? '〇 正解' : '× 不正解';
+          userAnsColor = isCorrect ? 'var(--success-text)' : 'var(--danger-text)';
+      }
+
+      item.className = `history-item ${statusClass}`;
+      const userAnsText = isAnswered ? q.options[userAnsIdx] : "（未回答）";
       const correctAnsText = q.options[q.answer];
+
+      let displayNum = index + 1;
+      if (isMockMode) {
+        displayNum = filteredQuestions.findIndex(fq => fq.id === q.id) + 1;
+      }
 
       item.innerHTML = `
         <div class="hi-header">
-          <span>問 ${index + 1} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
-          <span class="hi-mark">${isCorrect ? '〇 正解' : '× 不正解'}</span>
+          <span>問 ${displayNum} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
+          <span class="hi-mark">${markText}</span>
         </div>
         <div class="hi-q">${q.question}</div>
         <div class="hi-ans">
           <div class="ans-row">
             <span class="ans-label">あなたの<br>回答:</span>
-            <span style="color: ${isCorrect ? 'var(--success-text)' : 'var(--danger-text)'};">${userAnsText}</span>
+            <span style="color: ${userAnsColor};">${userAnsText}</span>
           </div>
           ${!isCorrect ? `
           <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
@@ -1406,10 +2110,23 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
             <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
           </div>
           ` : ''}
+          <details style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;" ${!isCorrect ? 'open' : ''}>
+            <summary style="color: var(--primary); font-weight: bold; cursor: pointer; margin-bottom: 6px; outline: none;">📝 解説</summary>
+            <div class="hist-exp-content md-content"></div>
+          </details>
         </div>
       `;
       historyList.appendChild(item);
+      
+      // 履歴内の解説もMarkdownとしてパース
+      const expContainer = item.querySelector('.hist-exp-content');
+      expContainer.innerHTML = DOMPurify.sanitize(marked.parse(q.explanation));
     });
+    
+    // リスト生成後に履歴全体の数式をレンダリング
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([historyList]).catch(err => console.error(err));
+    }
 
     if (displayedCount === 0) {
       historyList.innerHTML = `<div class="empty-msg">表示する問題がありません。<br>（すべて正解しました！）</div>`;
