@@ -184,7 +184,10 @@
       font-size: 0.8rem; font-weight: bold; margin-bottom: 12px; transition: 0.3s;
     }
 
-    .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 16px; white-space: pre-wrap; }
+    .question-box { font-size: 1.05rem; font-weight: 600; line-height: 1.6; margin-bottom: 16px; white-space: normal; }
+    .question-box p:first-child { margin-top: 0; }
+    .question-box p:last-child { margin-bottom: 0; }
+    
     .question-image { max-width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 24px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
 
     .options { display: flex; flex-direction: column; gap: 12px; }
@@ -192,6 +195,7 @@
       text-align: left; padding: 16px; border: 2px solid var(--border); border-radius: var(--radius); 
       background: var(--card); font-size: 0.95rem; line-height: 1.5; color: var(--text); cursor: pointer; transition: all 0.2s;
     }
+    .option-btn p { margin: 0; }
     .option-btn:hover:not(:disabled) { border-color: var(--text-muted); background: var(--bg); }
     .option-btn:active:not(:disabled) { transform: scale(0.98); }
     .option-btn.correct { background-color: var(--success-bg); border-color: var(--success-text); color: var(--success-text); font-weight: bold; }
@@ -208,6 +212,7 @@
     /* マークダウン・数式表示用のスタイル */
     .md-content { font-size: 0.95rem; line-height: 1.6; white-space: normal; }
     .md-content p { margin-top: 0; margin-bottom: 12px; }
+    .md-content p:last-child { margin-bottom: 0; }
     .md-content h1, .md-content h2, .md-content h3, .md-content h4 { margin-top: 20px; margin-bottom: 10px; color: var(--primary); font-weight: bold;}
     .md-content h3 { font-size: 1.1rem; border-bottom: 1px solid var(--border); padding-bottom: 4px;}
     .md-content h4 { font-size: 1rem; }
@@ -233,6 +238,8 @@
     .history-item { padding: 16px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--card); font-size: 0.9rem; line-height: 1.5; }
     .hi-header { display: flex; justify-content: space-between; align-items: center; font-weight: bold; margin-bottom: 10px; color: var(--text-muted); border-bottom: 1px dashed var(--border); padding-bottom: 8px;}
     .hi-q { margin-bottom: 12px; font-weight: 600; color: var(--text); }
+    .hi-q p:first-child { margin-top: 0; }
+    .hi-q p:last-child { margin-bottom: 0; }
     .hi-ans { display: flex; flex-direction: column; gap: 6px; background: var(--bg); padding: 10px; border-radius: 6px;}
     .hi-mark { font-weight: bold; font-size: 1.1rem; padding: 2px 8px; border-radius: 4px; }
     .hi-correct { border-left: 4px solid var(--success-text); }
@@ -244,6 +251,7 @@
     
     .ans-row { display: flex; gap: 8px; }
     .ans-label { width: 50px; flex-shrink: 0; color: var(--text-muted); font-size: 0.85rem; margin-top: 2px;}
+    .ans-row .md-content p { margin: 0; }
     .empty-msg { text-align: center; color: var(--text-muted); padding: 20px; font-style: italic; }
     
     #start-ai-btn { background: linear-gradient(135deg, #a855f7, #d946ef); box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4); margin-top: 16px; }
@@ -435,7 +443,6 @@
 
     <div id="target-count" class="target-count-box">出題対象: 計算中...</div>
     
-    <!-- ★ここに追加：中断データの再開エリア -->
     <div id="resume-area" style="display: none; background: rgba(99, 102, 241, 0.1); border: 2px dashed var(--primary); padding: 16px; border-radius: 8px; margin-bottom: 24px; text-align: center;">
       <div style="font-weight: bold; color: var(--primary); margin-bottom: 8px;">⚠️ 中断中のデータがあります</div>
       <div id="resume-info" style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 12px;"></div>
@@ -608,7 +615,7 @@
     stats: { total: 0, correct: 0 },
     history: {},
     mockExams: [],
-    savedSession: null // ★追加：中断データを保存する場所
+    savedSession: null 
   };
   
   window.onload = async () => {
@@ -676,7 +683,7 @@
       if (savedData) {
         userMemory = JSON.parse(savedData);
         if (!userMemory.mockExams) userMemory.mockExams = [];      
-        if (!userMemory.savedSession) userMemory.savedSession = null; // 初期化
+        if (!userMemory.savedSession) userMemory.savedSession = null; 
       }
     } catch (e) {
       console.error("メモリの読み込みエラー", e);
@@ -1089,7 +1096,6 @@
       startBtn.textContent = '過去問演習を開始する';
     }
 
-    // ★追加：中断データがある場合のUI更新
     const resumeArea = document.getElementById('resume-area');
     if (userMemory.savedSession) {
       resumeArea.style.display = 'block';
@@ -1194,7 +1200,7 @@
       aiGeneratedCount += addedCount;
       const percent = Math.round((aiGeneratedCount / totalAiNeed) * 100);
       document.getElementById('ai-progress-text').textContent = stepMsg;
-      document.getElementById('ai-progress-text').style.color = '#a855f7'; // reset color
+      document.getElementById('ai-progress-text').style.color = '#a855f7'; 
       document.getElementById('ai-progress-count').textContent = `${aiGeneratedCount} / ${totalAiNeed} 問`;
       document.getElementById('ai-progress-bar').style.width = `${percent}%`;
     };
@@ -1202,7 +1208,7 @@
     const retryCallback = (retriesLeft, isLite) => {
       const modelName = isLite ? "軽量(Lite)モデル" : "標準モデル";
       document.getElementById('ai-progress-text').textContent = `API混雑中... 再試行(${modelName})`;
-      document.getElementById('ai-progress-text').style.color = '#eab308'; // 警告色
+      document.getElementById('ai-progress-text').style.color = '#eab308'; 
     };
 
     try {
@@ -1277,7 +1283,6 @@
       initMockNav(); 
       renderQuestion();
 
-      // ★追加：開始時に既存のセーブデータを破棄
       clearSavedSession();
 
     } catch (error) {
@@ -1287,7 +1292,6 @@
     }
   };
 
-  // AIに指定ジャンル・指定問題数を生成させる関数（リトライ対応）
   async function fetchMockAIBatch(genre, count, apiKey, useLiteModel = false, previousQuestionsText = "", onRetry = null) {
     const modelName = useLiteModel ? 'gemini-3.5-flash-lite' : 'gemini-3.5-flash';
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
@@ -1300,7 +1304,7 @@
     const prompt = `あなたは技術士（衛生工学部門）の試験委員です。「${genre}」分野について、本番試験と同等の難易度と形式で、五肢択一問題を【${count}問】作成してください。
 図表を使わずテキストのみで解答できる問題にし、JSONフォーマット（{"questions": [{"question": "...", "options": ["...","...","...","...","..."], "answer": 0, "explanation": "..."}]}）で出力してください。
 問題文や選択肢は、過去問と全く同じにならないよう工夫してください。
-※重要：解説にはMarkdown記法（見出し、太字など）を使い、数式が含まれる場合はLaTeX記法（インラインは $...$ 、ブロックは $$...$$）を使用してください。${avoidPrompt}`;
+※重要：問題文、選択肢、解説にはMarkdown記法（見出し、太字など）を使い、数式が含まれる場合は必ずLaTeX記法（インラインは $...$ 、ブロックは $$...$$）を使用してください。${avoidPrompt}`;
 
     const payload = { contents: [{ parts: [{ text: prompt }] }], generationConfig: { response_mime_type: "application/json" } };
     
@@ -1425,7 +1429,6 @@
     switchScreen('screen-quiz');
     renderQuestion();
 
-    // ★追加：開始時に既存のセーブデータを破棄
     clearSavedSession();
   };
 
@@ -1450,7 +1453,6 @@
     switchScreen('screen-quiz');
     await generateAIQuestionsBatch();
     
-    // ★追加：開始時に既存のセーブデータを破棄
     clearSavedSession();
   }
 
@@ -1460,7 +1462,7 @@
     document.getElementById('opt-box').style.display = 'none';
     document.getElementById('q-source').style.display = 'none';
     document.getElementById('ai-loading').style.display = 'block';
-    document.getElementById('ai-progress-container').style.display = 'none'; // 5問生成時はプログレスバー非表示
+    document.getElementById('ai-progress-container').style.display = 'none'; 
     
     const aiLoadingMsg = document.getElementById('ai-loading-msg');
     if (useLiteModel) {
@@ -1508,7 +1510,7 @@ ${refText}
 【指示】
 ・過去問の単なるコピーではなく、関連知識を組み合わせたオリジナル問題にすること。
 ・※重要：システム上、図表や画像を表示できません。「図Aに示す〜」「下表について〜」など、図表がないと解答できない問題は絶対に作成せず、すべてテキストのみで完結する問題にしてください。
-・解説文はMarkdown記法（見出し、太字など）を用いて構造化し、数式を使用する場合はLaTeX記法（インラインは $...$、ブロックは $$...$$）で記述してください。
+・問題文、選択肢、解説文はMarkdown記法（見出し、太字など）を用いて構造化し、数式を使用する場合は必ずLaTeX記法（インラインは $...$、ブロックは $$...$$）で記述してください。
 
 以下のJSONフォーマットで出力してください。
 {
@@ -1590,7 +1592,10 @@ ${refText}
 
     document.getElementById('prog-label').textContent = isMockMode ? `問 ${curIdx + 1}` : `問 ${curIdx + 1} / ${filteredQuestions.length}`;
     document.getElementById('cat-label').textContent = `${q.genre} > ${q.subgenre}`;
-    document.getElementById('q-text').textContent = q.question;
+    
+    // 問題文をMarkdown/LaTeXとしてパース
+    const qTextEl = document.getElementById('q-text');
+    qTextEl.innerHTML = DOMPurify.sanitize(marked.parse(q.question));
     
     const sourceEl = document.getElementById('q-source');
     if (q.year === "AI予想 (腕試し)" || (isAiMode && !isMockMode)) {
@@ -1636,7 +1641,9 @@ ${refText}
     q.options.forEach((opt, idx) => {
         const btn = document.createElement('button');
         btn.className = 'option-btn';
-        btn.textContent = `${idx + 1}. ${opt}`;
+        
+        // 選択肢もMarkdown/LaTeXとしてパース
+        btn.innerHTML = DOMPurify.sanitize(marked.parse(`**${idx + 1}.** ${opt}`));
         
         if (hasAnswered) {
           btn.disabled = true;
@@ -1653,6 +1660,11 @@ ${refText}
         optBox.appendChild(btn);
     });
 
+    // 画面に配置した問題文と選択肢の数式を一括でレンダリング
+    if (window.MathJax && window.MathJax.typesetPromise) {
+        MathJax.typesetPromise([document.getElementById('q-text'), document.getElementById('opt-box')]).catch(err => console.error("MathJax error:", err));
+    }
+
     document.getElementById('exp-box').classList.remove('show');
     document.getElementById('ai-explain-result').style.display = 'none';
     document.getElementById('ai-explain-btn').style.display = 'none';
@@ -1664,7 +1676,6 @@ ${refText}
       const resStatus = document.getElementById('res-status');
       resStatus.innerHTML = isCorrect ? '<span style="color:var(--success-text);">⭕ 正解</span>' : '<span style="color:var(--danger-text);">❌ 不正解</span>';
       
-      // MarkdownとLaTeXをレンダリングして表示
       renderContent(q.explanation, 'exp-text');
       document.getElementById('exp-box').classList.add('show');
       
@@ -1673,7 +1684,7 @@ ${refText}
       }
       
       nextBtn.disabled = false;
-      nextBtn.style.background = ''; // reset color
+      nextBtn.style.background = ''; 
 
       if (isMockMode) {
         if (mockAnsweredCount >= MAX_MOCK_SELECT) {
@@ -1813,7 +1824,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         loading.style.display = "none";
         resultBox.style.display = "block";
         
-        // MarkdownとLaTeXをレンダリングして表示
         const textToRender = useLiteModel ? `**[Liteモデルによる解説]**\n\n${aiText}` : aiText;
         renderContent(textToRender, 'ai-explain-text');
       }
@@ -1830,14 +1840,12 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
         curIdx++; 
         renderQuestion(); 
         window.scrollTo(0, 0);
-        // ★追加：1問進むごとに進捗を自動保存
         saveCurrentSession();
     }
   }
 
-  // ★追加：現在のセッション状態を保存する関数
   function saveCurrentSession() {
-    if (window.isViewingPastMock) return; // 過去の履歴閲覧中は保存しない
+    if (window.isViewingPastMock) return; 
 
     const now = new Date();
     const yyyy = now.getFullYear();
@@ -1858,13 +1866,11 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     saveUserData();
   }
 
-  // ★追加：セーブデータを破棄する関数
   function clearSavedSession() {
     userMemory.savedSession = null;
     saveUserData();
   }
 
-  // ★追加：中断データを破棄するボタンの処理
   window.discardSession = function() {
     if (confirm("中断中のデータを破棄してもよろしいですか？\n（この操作は元に戻せません）")) {
       clearSavedSession();
@@ -1872,7 +1878,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
     }
   };
 
-  // ★追加：中断データから再開する処理
   window.resumeSession = function() {
     if (!userMemory.savedSession) return;
 
@@ -1975,7 +1980,6 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       }
     }
 
-    // ★追加：最後までやり切った、または結果を見た場合はセーブデータを消去
     if (!window.isViewingPastMock) {
         clearSavedSession();
     }
@@ -2085,8 +2089,11 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       }
 
       item.className = `history-item ${statusClass}`;
-      const userAnsText = isAnswered ? q.options[userAnsIdx] : "（未回答）";
-      const correctAnsText = q.options[q.answer];
+      
+      // 問題文や選択肢もMarkdown/LaTeXパース
+      const qTextHtml = DOMPurify.sanitize(marked.parse(q.question));
+      const userAnsHtml = isAnswered ? DOMPurify.sanitize(marked.parse(q.options[userAnsIdx])) : "（未回答）";
+      const correctAnsHtml = DOMPurify.sanitize(marked.parse(q.options[q.answer]));
 
       let displayNum = index + 1;
       if (isMockMode) {
@@ -2098,16 +2105,16 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
           <span>問 ${displayNum} <span style="font-size:0.75rem; font-weight:normal;">(${q.year})</span></span>
           <span class="hi-mark">${markText}</span>
         </div>
-        <div class="hi-q">${q.question}</div>
+        <div class="hi-q md-content">${qTextHtml}</div>
         <div class="hi-ans">
           <div class="ans-row">
             <span class="ans-label">あなたの<br>回答:</span>
-            <span style="color: ${userAnsColor};">${userAnsText}</span>
+            <span style="color: ${userAnsColor}; flex: 1;" class="md-content">${userAnsHtml}</span>
           </div>
           ${!isCorrect ? `
           <div class="ans-row" style="margin-top: 4px; border-top: 1px dashed var(--border); padding-top: 6px;">
             <span class="ans-label">正解:</span>
-            <span style="color: var(--success-text); font-weight: bold;">${correctAnsText}</span>
+            <span style="color: var(--success-text); font-weight: bold; flex: 1;" class="md-content">${correctAnsHtml}</span>
           </div>
           ` : ''}
           <details style="margin-top: 12px; border-top: 1px solid var(--border); padding-top: 8px;" ${!isCorrect ? 'open' : ''}>
@@ -2118,12 +2125,10 @@ ${q.options.map((opt, i) => `${i + 1}. ${opt}`).join('\n')}
       `;
       historyList.appendChild(item);
       
-      // 履歴内の解説もMarkdownとしてパース
       const expContainer = item.querySelector('.hist-exp-content');
       expContainer.innerHTML = DOMPurify.sanitize(marked.parse(q.explanation));
     });
     
-    // リスト生成後に履歴全体の数式をレンダリング
     if (window.MathJax && window.MathJax.typesetPromise) {
         MathJax.typesetPromise([historyList]).catch(err => console.error(err));
     }
